@@ -2,7 +2,10 @@ import React from 'react'
 
 const page = () => {
   return (
-    <div>page</div>
+    <div>
+      <h1>Upload Page</h1>
+      <p>Upload your CSV files here!</p>
+    </div>
   )
 }
 
