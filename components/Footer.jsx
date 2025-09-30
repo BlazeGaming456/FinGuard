@@ -5,6 +5,7 @@ const Footer = () => {
     <div>
         <h1>FinGuard</h1>
         <p>Made with ❤️ by Ajin@2025</p>
+        <p>GitHub: <a href="https://github.com/BlazeGaming456">Link</a></p>
     </div>
   )
 }
