@@ -9,6 +9,7 @@ const Navbar = () => {
           <li>Dashboard</li>
           <li>About</li>
           <li>Account</li>
+          <li>Dark Mode Toggle</li>
         </ul>
     </div>
   )
