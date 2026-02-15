@@ -46,3 +46,14 @@ Required data from CSV/PDF -
 2. description
 3. amount
 4. type
+
+Commit types -
+
+1. feat - a new feature
+2. fix - a bug fix
+3. docs - changes to documentation
+4. style - changes that don't affect the meaning of the code (formatting)
+5. refactor - code that neither fixes a bug nor adds a feature
+6. test - adding missing tests or correcting existing tests
+
+Example - fix(api): resolve null pointer exception in user profile
