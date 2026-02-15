@@ -1,0 +1,14 @@
+transaction_id,date,description,type,amount,balance,category
+TXN001,2026-01-01,Opening Balance,CREDIT,50000,50000,Income
+TXN002,2026-01-03,Amazon Purchase,DEBIT,1299,48701,Shopping
+TXN003,2026-01-05,Swiggy Order,DEBIT,450,48251,Food
+TXN004,2026-01-07,Salary Credit,CREDIT,60000,108251,Income
+TXN005,2026-01-08,Uber Ride,DEBIT,320,107931,Transport
+TXN006,2026-01-10,Electricity Bill,DEBIT,2100,105831,Utilities
+TXN007,2026-01-12,Mutual Fund SIP,DEBIT,5000,100831,Investment
+TXN008,2026-01-15,Freelance Payment,CREDIT,15000,115831,Income
+TXN009,2026-01-18,Big Bazaar,DEBIT,2750,113081,Groceries
+TXN010,2026-01-22,Netflix Subscription,DEBIT,649,112432,Entertainment
+TXN011,2026-01-25,Petrol Pump,DEBIT,3000,109432,Fuel
+TXN012,2026-01-28,Restaurant Dinner,DEBIT,2200,107232,Food
+TXN013,2026-01-30,Interest Credit,CREDIT,350,107582,Interest

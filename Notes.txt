@@ -1,0 +1,3 @@
+----- Version 1 (Dashboard + CSV)
+1. papaparse -> used to process the csv files
+https://www.papaparse.com/

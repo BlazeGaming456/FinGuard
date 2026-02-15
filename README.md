@@ -19,6 +19,8 @@ Problems to be tackled -
 1. CSV files to be formatted by the user themselves
    PDF -> data extracted
    CSV -> direct
+   In most private sector banks, as well as those abroad, CSV files can be obtained.
+   For public sector banks like SBI in India, PDFs are preferred, and therefore have to be converted.
 2. If new CSV files added, either -
    i. Replace all analytics with new one
    ii. Seperate as 'January', 'February', and merge
