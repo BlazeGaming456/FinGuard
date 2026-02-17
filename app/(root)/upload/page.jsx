@@ -28,7 +28,7 @@ const page = () => {
     <div>
       <h1>Upload Page</h1>
       <p>Upload your CSV files here!</p>
-      <input type='file' onChange={handleFileChange} />
+      <input type='file' onChange={handleFileChange} accept='.csv'/>
     </div>
   )
 }
