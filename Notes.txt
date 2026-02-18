@@ -1,3 +1,20 @@
 ----- Version 1 (Dashboard + CSV)
 1. papaparse -> used to process the csv files
 https://www.papaparse.com/
+
+2. Create table -> <table>,<thead>,<tbody>
+
+3. Redirect to dashboard after CSV upload
+
+4. Create database schema and save transactions
+- npm install prisma @types/node @types/pg --save-dev
+npm install @prisma/client @prisma/adapter-pg pg dotenv
+- npx prisma
+npx prisma init
+- prisma.config.ts and schema.prisma created
+- Create database structure
+- npx prisma migrate dev --name init
+- npx prisma generate
+- Create lib/prisma.ts
+
+- Correct prisma.ts (currently)

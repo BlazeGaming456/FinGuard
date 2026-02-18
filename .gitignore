@@ -42,3 +42,4 @@ next-env.d.ts
 
 /app/generated/prisma
 ML_IMPLEMENTATION_PLAN.md
+/generated/prisma
