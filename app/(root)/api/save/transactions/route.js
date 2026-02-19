@@ -1,18 +1,18 @@
-import prisma from "@/lib/prisma";
+import prisma from "@/lib/prisma.ts";
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    console.log(prisma);
-    const transaction = await prisma.transactions.create({
-      data: {
-        id: body.id,
-        description: body.description,
-        amount: body.amount,
-        type: body.type,
-        category: body.category,
-        userId: 1,
-      },
+    console.log(body);
+    const transaction = await prisma.transactions.createMany({
+      data: body.filter(t => t.date && t.transaction_id).map((transc) => ({
+        date: new Date(transc.date),
+        description: transc.description,
+        amount: Number(transc.amount),
+        type: transc.type,
+        category: transc.category,
+        // userId: 1,
+      })),
     });
     return Response.json({ success: true, transaction }, { status: 200 });
   } catch (error) {

@@ -15,7 +15,7 @@ const page = () => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({transactions})
+      body: JSON.stringify(transactions)
     })
   }
 
@@ -27,12 +27,14 @@ const page = () => {
       console.log("In the process")
       Papa.parse(file, {
         header: true,
-        complete: results => {
+        skipEmptyLines: true, // Important - skip empty lines to avoid creating empty objects in the parsed data
+        complete: async results => {
           setParsedData(results.data)
           console.log(results.data)
+          await saveTransactions(results.data);
         }
       })
-      saveTransactions(parsedData)
+      
       // redirect('/dashboard')
     }
   }
