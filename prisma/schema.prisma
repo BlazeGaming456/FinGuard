@@ -18,6 +18,7 @@ model User {
 
 model Transactions {
   date        DateTime @default(now())
+  transaction_id String @unique // We make it unique so that we cna skip already existing values
   description String
   amount      Float
   type        String

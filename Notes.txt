@@ -26,4 +26,19 @@ If you change the db schema -
 - date is given as a string, so while adding, do 'new Date(transc.date)'
 - for multiple rows of data, use the 'createMany()' functions, and then use map to add the rows individually
 
-6. Do the next step (curently)
+6. To not allow duplicate values
+- We use the 'skipDuplicates' property of the createMany() function
+
+7. Find totalIncome and more from the data
+Here, we first use the filter() command, and then the reduce function to find the sum. Similarly, we could also sum up the amounts in each category.
+For example,
+- transactions.filter(t => t.type === 'DEBIT).reduce((acc, t) => acc + t.amount, 0);
+
+7. Plan to do (Currently) -
+i. Validate CSV
+ii. Format and clean up CSV
+iii. Add visuals to the dashboard
+iv. Add transaction table
+v. Add more analytics
+vi. Deal with edge cases
+vii. Handle PDF uploads

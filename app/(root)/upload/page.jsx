@@ -35,7 +35,7 @@ const page = () => {
         }
       })
       
-      // redirect('/dashboard')
+      redirect('/dashboard')
     }
   }
 
