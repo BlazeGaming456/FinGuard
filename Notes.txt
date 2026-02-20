@@ -34,7 +34,14 @@ Here, we first use the filter() command, and then the reduce function to find th
 For example,
 - transactions.filter(t => t.type === 'DEBIT).reduce((acc, t) => acc + t.amount, 0);
 
-7. Plan to do (Currently) -
+8. CSV Validation and Formatting
+i. We check that the headers correspond to the required ones after normalizing it, then push the ones that we've already got into a map. Atlast, we check if the required parameters have been obtained through the app.
+ii. For CSV Header Formatting - (Currently)
+
+
+
+
+Plan to do (Currently) -
 i. Validate CSV
 ii. Format and clean up CSV
 iii. Add visuals to the dashboard
