@@ -1,0 +1,221 @@
+✅ STAGE 1 — File-Level Validation (Before Parsing)
+File Integrity
+
+☐ File type is .csv
+
+☐ File is not empty
+
+☐ File size under limit (e.g., 5MB)
+
+☐ File encoding is readable (UTF-8 preferred)
+
+Structure
+
+☐ File has header row
+
+☐ At least 1 data row exists
+
+☐ No completely empty columns
+
+✅ STAGE 2 — Header Validation & Normalization
+Header Cleanup
+
+☐ Trim whitespace
+
+☐ Convert to lowercase
+
+☐ Remove special characters ((INR), ₹, etc.)
+
+☐ Normalize spaces
+
+Header Mapping
+
+☐ Map bank-specific headers → internal standard fields
+
+☐ Identify:
+
+Date column
+
+Description column
+
+Amount OR Debit/Credit columns
+
+Required Columns Check
+
+☐ Date exists
+
+☐ Description exists
+
+☐ Amount source exists (either amount OR debit/credit)
+
+Unknown Headers
+
+☐ Log unmapped headers for debugging
+
+☐ Ignore irrelevant columns safely
+
+✅ STAGE 3 — Row-Level Cleanup (Per Transaction)
+
+This is the most important section.
+
+🔹 Date Validation & Formatting
+
+☐ Trim value
+
+☐ Parse date successfully
+
+☐ Handle multiple formats (DD/MM/YYYY, MM-DD-YY, etc.)
+
+☐ Reject invalid dates
+
+☐ Reject impossible dates (e.g., 32/13/2026)
+
+☐ Optional: Reject future dates
+
+☐ Convert to standard format (YYYY-MM-DD)
+
+🔹 Amount Cleanup
+
+☐ Remove currency symbols (₹, $, etc.)
+
+☐ Remove commas (1,20,000 → 120000)
+
+☐ Remove CR/DR suffixes
+
+☐ Convert to number
+
+☐ Reject NaN
+
+☐ Reject zero if business rule requires
+
+☐ Handle negative properly
+
+☐ If debit/credit split:
+
+Debit → negative
+
+Credit → positive
+
+🔹 Type Normalization
+
+☐ Standardize to: "credit" or "debit"
+
+☐ Derive from:
+
+Sign of amount OR
+
+Debit/Credit column OR
+
+Type column
+
+☐ Never store mixed casing (Credit, CR, credit)
+
+🔹 Description Cleanup
+
+☐ Trim whitespace
+
+☐ Remove excessive spaces
+
+☐ Remove non-printable characters
+
+☐ Replace empty with "Unknown" if needed
+
+☐ Optional: Limit max length
+
+🔹 Category Handling (Optional for Phase 2)
+
+☐ If category exists → normalize casing
+
+☐ If missing → set null
+
+☐ Do NOT auto-classify yet (Phase 3)
+
+✅ STAGE 4 — Logical Validation Rules
+
+These protect data integrity.
+
+☐ Date is not null
+
+☐ Amount is not null
+
+☐ Description is not null
+
+☐ Amount is numeric
+
+☐ No absurd values (e.g., 99999999999 if you want limits)
+
+☐ Debit and credit not both filled in same row
+
+☐ If both empty → reject row
+
+✅ STAGE 5 — Duplicate Detection
+
+Define duplicate rule:
+
+Two transactions are same if:
+
+Same user
+
+Same date
+
+Same amount
+
+Same description
+
+Checklist:
+
+☐ Check against existing DB records
+
+☐ OR enforce DB unique composite index
+
+☐ Skip duplicates safely
+
+☐ Count skipped rows
+
+✅ STAGE 6 — Error Handling Strategy
+
+Do NOT silently fail.
+
+You must:
+
+☐ Count total rows
+
+☐ Count valid rows
+
+☐ Count skipped rows
+
+☐ Store reason for skipped rows
+
+☐ Return structured response to frontend
+
+Example reporting checklist:
+
+☐ Show: “498 inserted, 22 skipped”
+
+☐ Allow user to re-upload safely
+
+✅ STAGE 7 — Final Data Normalization Before Insert
+
+Every stored transaction must be:
+
+☐ Date → YYYY-MM-DD
+
+☐ Amount → pure number (no commas, no symbols)
+
+☐ Type → "credit" | "debit"
+
+☐ Description → trimmed string
+
+☐ Category → null or clean string
+
+NO raw CSV values should reach database.
+
+✅ STAGE 8 — Performance & Safety
+
+☐ Batch insert (not row-by-row)
+
+☐ Handle large CSV without crashing
+
+☐ Prevent duplicate uploads
+
+☐ Avoid blocking UI too long

@@ -62,7 +62,7 @@ const page = () => {
     const file = e.target.files[0];
     setSelectedFile(file)
     // File Validation
-    if (file.size() > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
       alert ('File size exceeds 5MB limit. Please upload a smaller file.');
       return;
     }
@@ -70,7 +70,7 @@ const page = () => {
       alert('Invalid file type. Please upload a CSV file.');
       return;
     }
-    if (file.size() === 0) {
+    if (file.size === 0) {
       alert('File is empty. Please upload a non-empty CSV file.');
       return;
     }

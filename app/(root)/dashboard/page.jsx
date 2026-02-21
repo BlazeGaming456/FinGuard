@@ -2,6 +2,10 @@
 
 import React, { use } from 'react'
 import { useState, useEffect } from 'react'
+import { Pie, PieChart } from 'recharts';
+import { RechartsDevtools } from '@recharts/devtools';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { LineChart, Line } from 'recharts';
 
 const page = () => {
   const [transactions, setTransactions] = useState([]);
@@ -49,8 +53,16 @@ const page = () => {
     statistics();
   }, [transactions]);
 
+  console.log(stats.categoryWise);
+
   return (
-    <div>Add visuals here</div>
+    <div>
+      <div>
+        {stats.categoryWise && <PieChart style={{width: '100%', maxWidth: '500px', maxHeight: '80vh', aspectRatio: 2}} responsive>
+          <Pie dataKey="value" startAngle={180} endAngle={0} data={stats.categoryWise} cx='50%' cy='100%' outerRadius='120%' isAnimationActive={true} label />
+        </PieChart>}
+      </div>
+    </div>
   )
 }
 

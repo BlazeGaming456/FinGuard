@@ -47,5 +47,12 @@ ii. Format and clean up CSV
 iii. Add visuals to the dashboard
 iv. Add transaction table
 v. Add more analytics
-vi. Deal with edge cases
-vii. Handle PDF uploads
+- Monthly totals
+- Category totals
+- Savings rate
+- Largest expense category
+- Highest single transaction
+- Average daily spending
+vi. Deal with edge cases -> Negative amount, Missing categories
+
+
