@@ -38,21 +38,14 @@ For example,
 i. We check that the headers correspond to the required ones after normalizing it, then push the ones that we've already got into a map. Atlast, we check if the required parameters have been obtained through the app.
 ii. For CSV Header Formatting - (Currently)
 
-
+9. Added visuals and analytical formulae to the dashboard
+i. Calculated the different parameters, after formatting the object using the reduce() keyword, and then using the map function to convert it into the required format.
+ii. Used 'recharts' to create the requried graphs
 
 
 Plan to do (Currently) -
 i. Validate CSV
 ii. Format and clean up CSV
-iii. Add visuals to the dashboard
-iv. Add transaction table
-v. Add more analytics
-- Monthly totals
-- Category totals
-- Savings rate
-- Largest expense category
-- Highest single transaction
-- Average daily spending
-vi. Deal with edge cases -> Negative amount, Missing categories
-
-
+iii. Add transaction table
+iv. Deal with edge cases -> Negative amount, Missing categories
+v. Map the different fields correctly to the database, by formatting the headers.
