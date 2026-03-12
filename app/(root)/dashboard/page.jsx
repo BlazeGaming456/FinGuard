@@ -15,7 +15,8 @@ import {
   Legend
 } from 'recharts'
 import { LineChart, Line } from 'recharts'
-import Link from 'next/link'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 
 const page = () => {
   const [transactions, setTransactions] = useState([])
@@ -371,6 +372,203 @@ const page = () => {
     }
   }
 
+  //5. Saving as PDF
+  const exportPDF = () => {
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const W = 210 // A4 width in mm
+  const margin = 14
+  const col = margin
+  let y = 0
+
+  // ── Header bar ──────────────────────────────────────────
+  pdf.setFillColor(99, 102, 241) // indigo
+  pdf.rect(0, 0, W, 22, 'F')
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFontSize(16)
+  pdf.setFont('helvetica', 'bold')
+  pdf.text('FinGuard Financial Report', col, 14)
+  pdf.setFontSize(9)
+  pdf.setFont('helvetica', 'normal')
+  pdf.text(new Date().toLocaleDateString(), W - margin, 14, { align: 'right' })
+  y = 32
+
+  // ── Risk badge ──────────────────────────────────────────
+  const riskLabel = score < 5 ? 'LOW RISK' : score < 10 ? 'MODERATE RISK' : 'HIGH RISK'
+  const riskColor = score < 5 ? [34,197,94] : score < 10 ? [245,158,11] : [239,68,68]
+  pdf.setFillColor(...riskColor)
+  pdf.roundedRect(col, y - 5, 38, 9, 2, 2, 'F')
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFontSize(8)
+  pdf.setFont('helvetica', 'bold')
+  pdf.text(riskLabel, col + 19, y + 1, { align: 'center' })
+
+  pdf.setTextColor(100, 100, 100)
+  pdf.setFontSize(8)
+  pdf.setFont('helvetica', 'normal')
+  pdf.text(`FinGuard Score: ${score}`, col + 42, y + 1)
+  y += 14
+
+  // ── Summary cards (4 across) ────────────────────────────
+  const cards = [
+    { label: 'Total Income',   value: `₹${stats.totalIncome?.toLocaleString()}`,   color: [34,197,94]  },
+    { label: 'Total Expense',  value: `₹${stats.totalExpense?.toLocaleString()}`,  color: [239,68,68]  },
+    { label: 'Balance',        value: `₹${stats.balance?.toLocaleString()}`,        color: [99,102,241] },
+    { label: 'Transactions',   value: stats.transactionCount,                       color: [14,165,233] },
+  ]
+  const cardW = (W - margin * 2 - 9) / 4
+  cards.forEach((card, i) => {
+    const x = col + i * (cardW + 3)
+    pdf.setFillColor(245, 245, 255)
+    pdf.roundedRect(x, y, cardW, 18, 2, 2, 'F')
+    pdf.setDrawColor(...card.color)
+    pdf.setLineWidth(0.8)
+    pdf.line(x, y, x, y + 18) // left accent line
+    pdf.setTextColor(...card.color)
+    pdf.setFontSize(11)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text(String(card.value), x + cardW / 2, y + 8, { align: 'center' })
+    pdf.setTextColor(120, 120, 120)
+    pdf.setFontSize(7)
+    pdf.setFont('helvetica', 'normal')
+    pdf.text(card.label, x + cardW / 2, y + 14, { align: 'center' })
+  })
+  y += 26
+
+  // ── Section helper ──────────────────────────────────────
+  const sectionTitle = (title) => {
+    pdf.setFillColor(240, 240, 255)
+    pdf.rect(col, y, W - margin * 2, 7, 'F')
+    pdf.setTextColor(99, 102, 241)
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text(title, col + 2, y + 5)
+    y += 11
+  }
+
+  // ── Advisory flags ──────────────────────────────────────
+  sectionTitle('Advisory Flags')
+  const flags = [
+    analytics.deficitMonths > 0 && `Deficit for ${analytics.deficitMonths} consecutive month(s)`,
+    analytics.savingsRates < 10  && `Low savings rate: ${analytics.savingsRates?.toFixed(1)}%`,
+    analytics.expenseToIncomeRatio > 75 && `High expense-to-income ratio: ${analytics.expenseToIncomeRatio?.toFixed(1)}%`,
+    analytics.spikes > 0 && `${analytics.spikes} unusual expense spike(s) detected`,
+    analytics.isIncreasing && `Expenses rising consistently over last 3 months`,
+    analytics.incomeDropPercent > 10 && `Income dropped by ${analytics.incomeDropPercent?.toFixed(1)}%`,
+  ].filter(Boolean)
+
+  if (flags.length === 0) {
+    pdf.setTextColor(34, 197, 94)
+    pdf.setFontSize(9)
+    pdf.text('✓ No major financial concerns detected.', col, y)
+    y += 8
+  } else {
+    flags.forEach(flag => {
+      pdf.setFillColor(255, 240, 240)
+      pdf.roundedRect(col, y, W - margin * 2, 7, 1, 1, 'F')
+      pdf.setTextColor(239, 68, 68)
+      pdf.setFontSize(8)
+      pdf.text(`⚠  ${flag}`, col + 2, y + 5)
+      y += 10
+    })
+  }
+  y += 4
+
+  // ── Category breakdown table ─────────────────────────────
+  sectionTitle('Category Breakdown')
+  pdf.setFontSize(8)
+  const tableColors = [99,102,241]
+
+  // Header row
+  pdf.setFillColor(...tableColors)
+  pdf.rect(col, y, W - margin * 2, 7, 'F')
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFont('helvetica', 'bold')
+  pdf.text('Category', col + 2, y + 5)
+  pdf.text('Amount (₹)', col + 80, y + 5)
+  pdf.text('% of Expenses', col + 120, y + 5)
+  y += 7
+
+  stats.categoryWise?.forEach((cat, i) => {
+    const bg = i % 2 === 0 ? [252,252,255] : [245,245,255]
+    pdf.setFillColor(...bg)
+    pdf.rect(col, y, W - margin * 2, 6, 'F')
+    pdf.setTextColor(50, 50, 50)
+    pdf.setFont('helvetica', 'normal')
+    pdf.text(cat.name, col + 2, y + 4)
+    pdf.text(`₹${cat.value.toLocaleString()}`, col + 80, y + 4)
+    pdf.text(`${((cat.value / stats.totalExpense) * 100).toFixed(1)}%`, col + 120, y + 4)
+
+    // Mini bar
+    const barW = ((cat.value / stats.totalExpense) * 50)
+    pdf.setFillColor(99, 102, 241)
+    pdf.rect(col + 148, y + 1.5, barW, 3, 'F')
+    y += 6
+  })
+  y += 8
+
+  // ── Monthly summary table ────────────────────────────────
+  if (y > 230) { pdf.addPage(); y = 14 }
+  sectionTitle('Monthly Summary')
+
+  pdf.setFillColor(...tableColors)
+  pdf.rect(col, y, W - margin * 2, 7, 'F')
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFont('helvetica', 'bold')
+  pdf.text('Month', col + 2, y + 5)
+  pdf.text('Income (₹)', col + 55, y + 5)
+  pdf.text('Expense (₹)', col + 100, y + 5)
+  pdf.text('Savings (₹)', col + 145, y + 5)
+  y += 7
+
+  stats.monthlyDataObject?.forEach((m, i) => {
+    if (y > 270) { pdf.addPage(); y = 14 }
+    const savings = m.income - m.expense
+    const bg = i % 2 === 0 ? [252,252,255] : [245,245,255]
+    pdf.setFillColor(...bg)
+    pdf.rect(col, y, W - margin * 2, 6, 'F')
+    pdf.setFont('helvetica', 'normal')
+    pdf.setTextColor(50, 50, 50)
+    pdf.text(m.month, col + 2, y + 4)
+    pdf.text(`₹${m.income.toLocaleString()}`, col + 55, y + 4)
+    pdf.text(`₹${m.expense.toLocaleString()}`, col + 100, y + 4)
+    pdf.setTextColor(savings >= 0 ? 34 : 239, savings >= 0 ? 197 : 68, savings >= 0 ? 94 : 68)
+    pdf.text(`₹${savings.toLocaleString()}`, col + 145, y + 4)
+    y += 6
+  })
+  y += 8
+
+  // ── Data Quality ─────────────────────────────────────────
+  if (y > 240) { pdf.addPage(); y = 14 }
+  sectionTitle('Data Quality')
+  pdf.setTextColor(80, 80, 80)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(8)
+  const dqLines = [
+    `Total Transactions: ${dataQuality.totalTransactions}`,
+    `Date Range: ${dataQuality.dateRange}`,
+    `Missing Months: ${dataQuality.missingMonths?.length === 0 ? 'None' : dataQuality.missingMonths?.join(', ')}`,
+    `Anomalies Detected: ${dataQuality.anomalies}`,
+  ]
+  dqLines.forEach(line => {
+    pdf.text(line, col, y)
+    y += 6
+  })
+
+  // ── Footer on every page ─────────────────────────────────
+  const totalPages = pdf.getNumberOfPages()
+  for (let p = 1; p <= totalPages; p++) {
+    pdf.setPage(p)
+    pdf.setFillColor(240, 240, 255)
+    pdf.rect(0, 287, W, 10, 'F')
+    pdf.setTextColor(150, 150, 150)
+    pdf.setFontSize(7)
+    pdf.text('Generated by FinGuard', col, 293)
+    pdf.text(`Page ${p} of ${totalPages}`, W - margin, 293, { align: 'right' })
+  }
+
+  pdf.save('finguard-report.pdf')
+}
+
   useEffect(() => {
     getData()
   }, [])
@@ -562,7 +760,7 @@ const page = () => {
               <div>Loading...</div>
             ) : (
               <div>
-                {analytics.deficitMonth && analytics.deficitMonths > 0 && (
+                {analytics.deficitMonths && analytics.deficitMonths > 0 && (
                   <div>
                     <p>Persistent Deficit</p>
                     <p>
@@ -584,7 +782,7 @@ const page = () => {
                 )}
                 {analytics.emiRate &&
                   analytics.emiRates >
-                    75(
+                    75 && (
                       <div>
                         <p>High EMI/Debt Burden</p>
                         <p>

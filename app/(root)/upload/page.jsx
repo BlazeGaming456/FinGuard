@@ -101,6 +101,7 @@ const page = () => {
       <div>
       <h1>Upload Page</h1>
       <p>Upload your CSV files here!</p>
+      <p>Support for PDF and XLSX files coming soon!</p>
       <input type='file' onChange={handleFileChange} accept='.csv'/>
       </div>
       <div>

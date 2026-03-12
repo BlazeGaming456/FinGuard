@@ -54,7 +54,7 @@ v. Map the different fields correctly to the database, by formatting the headers
 
 Things to do -
 1. (Done) Category reclassification
-2. Convert into PDF
+2. (Done) Convert into PDF
 3. Format CSV input
 4. Accept XLSX, PDF (if possible)
 5. Prophet forecasting
