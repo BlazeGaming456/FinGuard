@@ -42,31 +42,22 @@ ii. For CSV Header Formatting - (Currently)
 i. Calculated the different parameters, after formatting the object using the reduce() keyword, and then using the map function to convert it into the required format.
 ii. Used 'recharts' to create the requried graphs
 
-
-Plan to do (Currently) -
-i. Validate CSV
-ii. Format and clean up CSV
-iii. Add transaction table
-iv. Deal with edge cases -> Negative amount, Missing categories
-v. Map the different fields correctly to the database, by formatting the headers.
-
 ----- Version 2 (Rule Based Advisory)
 
-Things to do -
-1. (Done) Category reclassification
-2. (Done) Convert into PDF
-3. Format CSV input
-4. Accept XLSX, PDF (if possible)
-5. Prophet forecasting
+1. Added advisory section based on the statistics
+2. Added transaction table and category recategorization
+3. Added an export to PDF button done with the help of 'jsPDF'
+4. Added Category Budget Benchmarking, Data Quality Panel, Financial Health Score and Summaries
 
-Version 2:
-1. Health Score + Breakdown Points
-2. Summary
-3. Month Range Selector
-4. Open window for specific properties like largest spending category, high severity alert, etc.
-5. Month-to-Month change indicators
-6. Category budget benchmarking in pie cahrt -> mark as red
-7. Data quality panel -> total transactions, date range covered, missing months, negative anomalies detected, categories auto-mapped, etc.
-8. Anomaly detection -> Outlier transaction detection, unusually high category month, income gap month, etc.
-9. Category reclassification UI -> allow users to change categories of transactions
-10. Download dashboard analytics as a PDF
+----- Version 3 (Prophet Forecasting)
+
+1. 
+
+----- Plans
+
+Things to do -
+1. Prophet forecasting
+
+Do Later -
+1. Format the CSV input
+2. Accept XLSX and PDF as input
