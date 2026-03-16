@@ -12,8 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from prophet import Prophet
 #For connection with the postgresql database
 import psycopg2
-#For returning rows as dictionaries
-from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,14 +32,7 @@ app.add_middleware (
 #1. Creating connection and fetching data from the database
 
 def get_db_connection():
-    return psycopg2.connect(
-        host = os.getenv("DB_HOST"),
-        database = os.getenv("DB_NAME"),
-        user = os.getenv("DB_USER"),
-        password = os.getenv("DB_PASSWORD"),
-        cursor_factory = RealDictCursor,
-        sslmode="require",
-    )
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
 def fetch_transactions() -> pd.DataFrame:
     conn = get_db_connection()

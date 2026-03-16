@@ -23,7 +23,8 @@ const page = () => {
     date: ["date", "transaction date", "value date", "txn date"],
     description: ["description", "narration", "remarks", "details"],
     amount: ["amount"],
-    type: ["type", "transaction type"]
+    type: ["type", "transaction type"],
+    category: ["category", "categories", "cat"]
   }
 
   const normalizeData = (data) => {
@@ -51,10 +52,11 @@ const page = () => {
   }
 
   const validateHeaders = (mappedHeaders) => {
-    if (!mappedHeaders.date || !mappedHeaders.description || !mappedHeaders.amount || !mappedHeaders.type) {
-      alert("CSV file is missing required headers. Please ensure it includes date, description, amount, and type.");
+    if (!mappedHeaders.date || !mappedHeaders.description || !mappedHeaders.amount || !mappedHeaders.type || !mappedHeaders.category) {
+      alert("CSV file is missing required headers. Please ensure it includes date, description, amount, type, and category.");
       return false;
     }
+    return true;
   }
 
   const handleFileChange = async (e) => {
@@ -62,10 +64,6 @@ const page = () => {
     const file = e.target.files[0];
     setSelectedFile(file)
     // File Validation
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      alert ('File size exceeds 5MB limit. Please upload a smaller file.');
-      return;
-    }
     if (file.type !== 'text/csv') {
       alert('Invalid file type. Please upload a CSV file.');
       return;
@@ -80,19 +78,29 @@ const page = () => {
         header: true,
         skipEmptyLines: true, // Important - skip empty lines to avoid creating empty objects in the parsed data
         complete: async results => {
-          setParsedData(results.data)
-          console.log(results.data)
-          
           const csvHeaders = Object.keys(results.data[0]);
           const mappedHeaders = mapHeaders(csvHeaders);
-          if (validateHeaders(mappedHeaders) === true) {
-            console.log ('Headers are valid, proceeding to save transactions');
-            await saveTransactions(results.data);
-          }
+          if (validateHeaders(mappedHeaders) === false) return; // already alerted in validateHeaders
+
+          const normalizedData = results.data.map(row => {
+            const newRow = {};
+            for (let key in row) {
+              const normalizedKey = mappedHeaders[key] || key;
+              newRow[normalizedKey] = row[key];
+            }
+            newRow.transaction_id = crypto.randomUUID();
+            return newRow;
+          });
+
+          setParsedData(normalizedData);
+          console.log(normalizedData);
+          
+          console.log('Headers are valid, proceeding to save transactions');
+          await saveTransactions(normalizedData);
         }
       })
       
-      redirect('/dashboard')
+      // redirect('/dashboard')
     }
   }
 
