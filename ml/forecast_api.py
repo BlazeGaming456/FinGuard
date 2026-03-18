@@ -284,15 +284,15 @@ def monte_carlo_simulation(
     final_savings = all_savings_paths[:, -1] #Savings at the end of the horizon
 
     #Risk of going broke at any point during the simulation
-    went_negative = np.any(all_savings_paths<0,axis=1)
+    went_negative = np.any(all_savings_paths<0,axis=1) #Checks if it becomes false at any point in the row
     risk_of_deficit = float(np.mean(went_negative))
 
     #Months until savings hit zero (Job loss scenario)
-    month_survivable = None
-    if (job_loss_months < 0):
+    months_survivable = None
+    if (job_loss_months > 0):
         first_negative = []
         for sim in range(n_simulation):
-            neg_months = np.where(all_savings_paths[sim] < 0)[0]
+            neg_months = np.where(all_savings_paths[sim] < 0)[0] #np.where() return tuple of values, where the first element return the array of indices
             if (len(neg_months) > 0):
                 first_negative.append(neg_months[0])
             else:
@@ -304,6 +304,117 @@ def monte_carlo_simulation(
     if (target_purchase > 0):
         target_idx = min(target_months-1, horizon-1)
         savings_at_target = all_savings_paths[:, target_idx]
-        afford_probability = float(np.mean(savings_at_target >= target_purchase))
+        afford_probability = float(np.mean(savings_at_target >= target_purchase)) #Mean of the boolean values gives probability
 
-    #Percentile 
+    #Percentile outcomes
+    p5 = float(np.percentile(final_savings, 5))
+    p25 = float(np.percentile(final_savings, 25))
+    p50 = float(np.percentile(final_savings, 50))
+    p75 = float(np.percentile(final_savings, 75))
+    p95 = float(np.percentile(final_savings, 95))
+
+    #Sample paths for frontend chart (1000 points will not be as smooth)
+    sample_paths = all_savings_paths[
+        np.random.choice(n_simulation, size=100, replace=False)
+    ].tolist()
+
+    #Interpretation layer
+    interpretations = []
+
+    interpretations.append({
+        "type": "risk_of_deficit",
+        "severity": "high" if risk_of_deficit > 0.3 else "medium" if risk_of_deficit > 0.1 else "low",
+        "message": f"There is a {risk_of_deficit*100}% probability your savings will drop below ₹0 in the next {horizon} months."
+    })
+
+    interpretations.append({
+        "type": "median_outcome",
+        "severity": "low",
+        "message": f"Median projected savings after {horizon} months: ₹{p50}"
+    })
+
+    interpretations.append({
+        "type": "worst_case",
+        "severity": "high",
+        "message": f"Worst-case scenario (5th percentile): ₹{p5}"
+    })
+
+    interpretations.append({
+        "type": "best_case",
+        "severity": "low",
+        "message": f"Best-case scenario (95th percentile): ₹{p95}"
+    })
+
+    if months_survivable is not None:
+        interpretations.append({
+            "type": "job_loss_survival",
+            "severity": "high" if months_survivable < 3 else "medium",
+            "message": f"Without income, your savings would last approximately {months_survivable} months on average."
+        })
+
+    if afford_probability is not None:
+        interpretations.append({
+            "type": "purchase_affordability",
+            "severity": "low" if afford_probability > 0.7 else "medium" if afford_probability > 0.4 else "high",
+            "message": f"You have a {afford_probability*100}% chance of affording ₹{target_purchase} within {target_months} months."
+        })
+    
+    return {
+        "status": "ok",
+        "n_simulations": n_simulation,
+        "horizon_months": horizon,
+        "percentile": {
+            "p5": p5,
+            "p25": p25,
+            "p50": p50,
+            "p75": p75,
+            "p95": p95
+        },
+        "var": {
+            "var_95": float(current_savings-p5),
+            "var_75": float(current_savings-p25),
+        },
+        "risk_of_deficit": risk_of_deficit,
+        "months_survivable": months_survivable,
+        "afford_probability": afford_probability,
+        "sample_paths": sample_paths,
+        "interpretations": interpretations,
+    }
+
+@app.post("/simulate")
+def run_simulations(body: dict):
+    current_savings = body.get("current_savings", 0)
+    horizon = body.get("horizon", 0)
+    job_loss_months = body.get("job_loss_months", 0)
+    target_purchase = body.get("target_purchase", 0)
+    target_months = body.get("target_months", 6)
+
+    if not 1 <= horizon <= 12:
+        raise HTTPException(status_code=400, detail="Horizon must be between 1 and 12")
+    
+    try:
+        df = fetch_transactions()
+    except Exception as e:
+        logger.error(f"DB error: {e}")
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    
+    expense_monthly = aggregate_monthly(df, "DEBIT")
+    income_monthly = aggregate_monthly(df, "CREDIT")
+
+    expense_result = train_and_forecast(expense_monthly, horizon, "DEBIT")
+    income_result = train_and_forecast(income_monthly, horizon, "CREDIT")
+
+    if (expense_result["status"] != "ok" or income_result["status"] != "ok"):
+        raise HTTPException(status_code=400, detail="Insufficient data for simulation")
+    
+    result = monte_carlo_simulation(
+        expense_fc = expense_result,
+        income_fc = income_result,
+        current_savings = current_savings,
+        horizon = horizon,
+        job_loss_months = job_loss_months,
+        target_purchase = target_purchase,
+        target_months = target_months,
+    )
+
+    return result
