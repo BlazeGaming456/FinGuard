@@ -238,3 +238,72 @@ def health():
     return {
         "status": "ok"
     }
+
+# Monte Carlo Simulation
+
+def monte_carlo_simulation(
+        expense_fc: dict,
+        income_fc: dict,
+        current_savings: float,
+        n_simulation: int = 1000,
+        horizon: int = 6,
+        job_loss_months: int = 0,
+        target_purchase: float = 0,
+        target_months: int = 6,
+) -> dict:
+    #i. Extract mean & std from historical transactions
+    exp_forecast = expense_fc["forecast"]
+    inc_forecast = income_fc["forecast"]
+
+    exp_means = np.array([r["yhat"] for r in exp_forecast[:horizon]])
+    exp_stds = np.array([(r["yhat_upper"] - r["yhat_lower"])/2 for r in exp_forecast[:horizon]])
+
+    inc_means = np.array([r["yhat"] for r in inc_forecast[:horizon]])
+    inc_stds = np.array([(r["yhat_upper"] - r["yhat_lower"])/2 for r in inc_forecast[:horizon]])
+
+    #ii. Run simulations
+    all_savings_paths = np.zeros((n_simulation, horizon))
+
+    for sim in range(n_simulation):
+        savings = current_savings
+
+        for month in range(horizon):
+            #Ignore negative expense
+            expense = max(0, np.random.normal(exp_means[month], exp_stds[month]))
+
+            #In job loss scenario, zero income for specified months
+            if (month < job_loss_months):
+                income = 0
+            else:
+                income = max(0, np.random.normal(inc_means[month], inc_stds[month]))
+            
+            savings = savings + income - expense
+            all_savings_paths[sim, month] = savings
+
+    #iii. Output metrics
+    final_savings = all_savings_paths[:, -1] #Savings at the end of the horizon
+
+    #Risk of going broke at any point during the simulation
+    went_negative = np.any(all_savings_paths<0,axis=1)
+    risk_of_deficit = float(np.mean(went_negative))
+
+    #Months until savings hit zero (Job loss scenario)
+    month_survivable = None
+    if (job_loss_months < 0):
+        first_negative = []
+        for sim in range(n_simulation):
+            neg_months = np.where(all_savings_paths[sim] < 0)[0]
+            if (len(neg_months) > 0):
+                first_negative.append(neg_months[0])
+            else:
+                first_negative.append(horizon)
+        months_survivable = float(np.mean(first_negative))
+
+    #Big purchase affordability
+    afford_probability = None
+    if (target_purchase > 0):
+        target_idx = min(target_months-1, horizon-1)
+        savings_at_target = all_savings_paths[:, target_idx]
+        afford_probability = float(np.mean(savings_at_target >= target_purchase))
+
+    #Percentile 
