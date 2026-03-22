@@ -494,15 +494,15 @@ def monte_carlo_simulation(
         likely_month = next(
             (entry["month"] for entry in affordabilty_timeline if entry["probability"]>0.5),None
         )
-    interpretations.append({
-        "type": "affordability",
-        "severity": "low" if likely_month and likely_month <= 3 else "medium",
-        "message": (
-            f"You are likely to afford ₹{target_purchase:,.0f} by month {likely_month}."
-            if likely_month
-            else f"Less than 50% chance of affording ₹{target_purchase:,.0f} within {horizon} months."
-        )
-    })
+        interpretations.append({
+            "type": "affordability",
+            "severity": "low" if likely_month and likely_month <= 3 else "medium",
+            "message": (
+                f"You are likely to afford ₹{target_purchase:,.0f} by month {likely_month}."
+                if likely_month
+                else f"Less than 50% chance of affording ₹{target_purchase:,.0f} within {horizon} months."
+            )
+        })
     
     return {
         "status": "ok",
