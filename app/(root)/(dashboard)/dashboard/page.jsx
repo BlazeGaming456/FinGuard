@@ -543,6 +543,7 @@ const page = () => {
     '#14B8A6',
     '#F43F5E'
   ]
+
   const allCategories = [...new Set(transactions.map(t => t.category))]
 
   // ── Risk config ──────────────────────────────────────────

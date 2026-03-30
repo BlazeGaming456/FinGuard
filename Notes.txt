@@ -49,15 +49,20 @@ ii. Used 'recharts' to create the requried graphs
 3. Added an export to PDF button done with the help of 'jsPDF'
 4. Added Category Budget Benchmarking, Data Quality Panel, Financial Health Score and Summaries
 
------ Version 3 (Prophet Forecasting)
+----- Prophet Forecasting
+It generates a range of values with 95% confidence.
 
-1. 
+----- Monte Carlo Simulation
+The forecasted data is used to simulate and get the required results.
 
 ----- Plans
-
-Things to do -
-1. Prophet forecasting
-
-Do Later -
-1. Format the CSV input
-2. Accept XLSX and PDF as input
+1. Add authentication
+2. Fetch only the transactions of the particular user
+3. Format the exported PDF properly
+4. Add delete option of the transactions from the transactions table
+5. Allow more options of uploading data
+6. Format the CSV properly
+7. Add a section to each page explaining the function
+8. Add a settings page
+9. Modify the design of all the pages
+10. Properly comment and document all the code
