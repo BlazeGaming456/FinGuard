@@ -46,7 +46,14 @@ export default function ForecastPage () {
     setError(null)
     try {
       const res = await fetch(`/api/forecast?horizon=${horizon}`)
-      if (!res.ok) throw new Error('Forecast service unavailable')
+      if (!res.ok) {
+        const errorResponse = await res.json().catch(() => null)
+        throw new Error(
+          errorResponse?.error ||
+            errorResponse?.detail ||
+            'Forecast service unavailable'
+        )
+      }
       const json = await res.json()
       setData(json)
     } catch (e) {
@@ -106,7 +113,7 @@ export default function ForecastPage () {
     <div className='space-y-6'>
       <PageHeader
         title='Prophet Forecast'
-        subtitle="Time-series forecasting using Facebook Prophet"
+        subtitle='Time-series forecasting using Facebook Prophet'
         badge='Phase 4'
       >
         <label className='text-text-secondary text-xs'>Horizon</label>
@@ -114,13 +121,13 @@ export default function ForecastPage () {
           value={horizon}
           onChange={e => setHorizon(Number(e.target.value))}
           className='input-field w-auto py-2'
-          >
-            {[3, 6, 9, 12].map(h => (
-              <option key={h} value={h}>
-                {h} months
-              </option>
-            ))}
-          </select>
+        >
+          {[3, 6, 9, 12].map(h => (
+            <option key={h} value={h}>
+              {h} months
+            </option>
+          ))}
+        </select>
         <button
           onClick={fetchForecast}
           disabled={loading}

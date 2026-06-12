@@ -34,11 +34,18 @@ app.add_middleware (
 def get_db_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-def fetch_transactions() -> pd.DataFrame:
+def fetch_transactions(user_id: int | None = None) -> pd.DataFrame:
     conn = get_db_connection()
     try:
-        query = 'SELECT date, amount, type, category FROM "Transactions" ORDER BY date'
-        df = pd.read_sql(query, conn)
+        if user_id is not None:
+            query = (
+                'SELECT date, amount, type, category FROM "Transactions" '
+                'WHERE "userId" = %s ORDER BY date'
+            )
+            df = pd.read_sql(query, conn, params=(user_id,))
+        else:
+            query = 'SELECT date, amount, type, category FROM "Transactions" ORDER BY date'
+            df = pd.read_sql(query, conn)
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df = df.dropna(subset=["date"])  # drop any rows where date failed to parse
         return df
@@ -186,12 +193,12 @@ def interpret(expense_fc: dict, income_fc: dict) -> list[dict]:
 #5. Routes
 
 @app.get("/forecast")
-def generate_forecast(horizon: int=6):
+def generate_forecast(horizon: int=6, user_id: int | None = None):
     if not 1 <= horizon <= 12:
         raise HTTPException(status_code=400, detail="Horizon must be between 1 and 12")
     
     try:
-        df = fetch_transactions()
+        df = fetch_transactions(user_id)
     except Exception as e:
         logger.error(f"DB error: {e}")
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -545,8 +552,10 @@ def run_simulations(body: dict):
     if not 100 <= n_simulations <= 5000:
         raise HTTPException(status_code=400, detail="n_simulations must be between 100 and 5000")
 
+    # support optional user_id in request body to scope transactions
+    user_id = body.get("user_id")
     try:
-        df = fetch_transactions()
+        df = fetch_transactions(user_id)
     except Exception as e:
         logger.error(f"DB error: {e}")
         raise HTTPException(status_code=500, detail="Database connection failed")

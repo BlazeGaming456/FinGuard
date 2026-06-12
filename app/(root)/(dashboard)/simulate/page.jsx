@@ -72,8 +72,8 @@ export default function SimulatePage () {
         })
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Simulation failed')
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || err?.detail || 'Simulation failed')
       }
       const json = await res.json()
       setData(json)

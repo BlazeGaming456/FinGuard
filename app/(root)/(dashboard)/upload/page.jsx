@@ -1,210 +1,240 @@
 'use client'
 
-import React from 'react'
-import { useState } from 'react'
-import Papa from 'papaparse'
+import React, { useState } from 'react'
 import PageHeader from '@/components/PageHeader'
+import {
+  isCsvFile,
+  isPdfFile,
+  parseCsvFile,
+  parsePdfFile
+} from '@/lib/fileParser'
 
 const page = () => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [parsedData, setParsedData] = useState(null)
+  const [errors, setErrors] = useState([])
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadDone, setUploadDone] = useState(false)
 
-  const saveTransactions = async (transactions) => {
-    await fetch('/api/save/transactions', {
+  const saveTransactions = async transactions => {
+    const response = await fetch('/api/save/transactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(transactions)
     })
-  }
 
-  const headerMap = {
-    date: ["date", "transaction date", "value date", "txn date"],
-    description: ["description", "narration", "remarks", "details"],
-    amount: ["amount"],
-    type: ["type", "transaction type"],
-    category: ["category", "categories", "cat"]
-  }
-
-  const normalizeData = (data) => {
-    return data.trim().toLowerCase()
-      .replace(/\(.*?\)/g, "")
-      .replace(/[^a-z0-9 ]/g, "")
-      .replace(/\s+/g, " ")
-  }
-
-  const mapHeaders = (headers) => {
-    const mappedHeaders = {}
-    for (let rawHeader of headers) {
-      const normalized = normalizeData(rawHeader)
-      for (let key in headerMap) {
-        if (headerMap[key].includes(normalized)) {
-          mappedHeaders[rawHeader] = key
-        }
-      }
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(payload?.error || 'Failed to save transactions.')
     }
-    return mappedHeaders
   }
 
-  const validateHeaders = (mappedHeaders) => {
-    if (!mappedHeaders.date || !mappedHeaders.description || !mappedHeaders.amount || !mappedHeaders.type || !mappedHeaders.category) {
-      alert("CSV file is missing required headers. Please ensure it includes date, description, amount, type, and category.")
-      return false
-    }
-    return true
+  const handleFileChange = async e => {
+    const file = e.target.files?.[0]
+    await processFile(file)
   }
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0]
-    processFile(file)
-  }
-
-  const handleDrop = (e) => {
+  const handleDrop = async e => {
     e.preventDefault()
     setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    processFile(file)
+    const file = e.dataTransfer.files?.[0]
+    await processFile(file)
   }
 
-  const processFile = async (file) => {
+  const processFile = async file => {
     if (!file) return
-    setSelectedFile(file)
-    setUploadDone(false)
-    setParsedData(null)
 
-    if (file.type !== 'text/csv') {
-      alert('Invalid file type. Please upload a CSV file.')
+    setSelectedFile(file)
+    setParsedData(null)
+    setErrors([])
+    setUploadDone(false)
+
+    if (!isCsvFile(file) && !isPdfFile(file)) {
+      setErrors([
+        'Unsupported file type. Please upload a CSV or PDF bank statement.'
+      ])
       return
     }
+
     if (file.size === 0) {
-      alert('File is empty. Please upload a non-empty CSV file.')
+      setErrors(['Uploaded file is empty. Please provide a non-empty file.'])
       return
     }
 
     setIsUploading(true)
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async results => {
-        const csvHeaders = Object.keys(results.data[0])
-        const mappedHeaders = mapHeaders(csvHeaders)
-        if (validateHeaders(mappedHeaders) === false) {
-          setIsUploading(false)
-          return
-        }
+    try {
+      const parser = isCsvFile(file) ? parseCsvFile : parsePdfFile
+      const { transactions, errors: parseErrors } = await parser(file)
 
-        const normalizedData = results.data.map(row => {
-          const newRow = {}
-          for (let key in row) {
-            const normalizedKey = mappedHeaders[key] || key
-            newRow[normalizedKey] = row[key]
-          }
-          newRow.transaction_id = crypto.randomUUID()
-          return newRow
-        })
-
-        setParsedData(normalizedData)
-        await saveTransactions(normalizedData)
-        setIsUploading(false)
-        setUploadDone(true)
+      if (
+        (!transactions || transactions.length === 0) &&
+        parseErrors.length > 0
+      ) {
+        setErrors(parseErrors)
+        return
       }
-    })
+
+      if (!transactions || transactions.length === 0) {
+        setErrors(['No transactions could be extracted from the file.'])
+        return
+      }
+
+      if (parseErrors.length > 0) {
+        setErrors(parseErrors)
+        return
+      }
+
+      setParsedData(transactions)
+      await saveTransactions(transactions)
+      setUploadDone(true)
+    } catch (error) {
+      setErrors([
+        error.message || 'Unexpected error while processing the file.'
+      ])
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
-    <div className="space-y-6">
-
+    <div className='space-y-6'>
       <PageHeader
-        title="Upload Transactions"
-        subtitle="Upload your bank statement CSV to analyse your finances"
-        badge="Data"
+        title='Upload Transactions'
+        subtitle='Upload your SBI bank statement PDF or a bank CSV to analyze your finances'
+        badge='Data'
       />
 
       {/* Upload area */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+        onDragOver={e => {
+          e.preventDefault()
+          setIsDragging(true)
+        }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={`stagger-item relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 cursor-pointer
-          ${isDragging
-            ? 'border-accent bg-accent/10'
-            : 'border-border bg-bg-card hover:border-accent/50 hover:bg-bg-card/80'
+          ${
+            isDragging
+              ? 'border-accent bg-accent/10'
+              : 'border-border bg-bg-card hover:border-accent/50 hover:bg-bg-card/80'
           }`}
         onClick={() => document.getElementById('fileInput').click()}
       >
         <input
-          id="fileInput"
+          id='fileInput'
           type='file'
           onChange={handleFileChange}
-          accept='.csv'
-          className="hidden"
+          accept='.csv,.pdf'
+          className='hidden'
         />
 
         {isUploading ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            <p className="text-text-secondary text-sm">Parsing and saving transactions...</p>
+          <div className='flex flex-col items-center gap-3'>
+            <div className='w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin' />
+            <p className='text-text-secondary text-sm'>
+              Parsing and saving transactions...
+            </p>
           </div>
         ) : uploadDone ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
-              <span className="text-success text-2xl">✓</span>
+          <div className='flex flex-col items-center gap-3'>
+            <div className='w-12 h-12 rounded-full bg-success/20 flex items-center justify-center'>
+              <span className='text-success text-2xl'>✓</span>
             </div>
-            <p className="text-success font-medium">Upload successful</p>
-            <p className="text-text-secondary text-sm">{selectedFile?.name}</p>
+            <p className='text-success font-medium'>Upload successful</p>
+            <p className='text-text-secondary text-sm'>{selectedFile?.name}</p>
             <button
-              onClick={(e) => { e.stopPropagation(); setUploadDone(false); setParsedData(null); setSelectedFile(null) }}
-              className="mt-2 text-xs text-text-secondary hover:text-text-primary underline"
+              onClick={e => {
+                e.stopPropagation()
+                setUploadDone(false)
+                setParsedData(null)
+                setSelectedFile(null)
+              }}
+              className='mt-2 text-xs text-text-secondary hover:text-text-primary underline'
             >
               Upload another file
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-bg-secondary flex items-center justify-center border border-border">
-              <span className="text-2xl">↑</span>
+          <div className='flex flex-col items-center gap-3'>
+            <div className='w-12 h-12 rounded-full bg-bg-secondary flex items-center justify-center border border-border'>
+              <span className='text-2xl'>↑</span>
             </div>
             <div>
-              <p className="text-text-primary font-medium">
+              <p className='text-text-primary font-medium'>
                 Drop your CSV file here
               </p>
-              <p className="text-text-secondary text-sm mt-1">
+              <p className='text-text-secondary text-sm mt-1'>
                 or click to browse
               </p>
             </div>
-            <div className="flex gap-2 mt-2">
-              {["date", "description", "amount", "type", "category"].map(col => (
-                <span key={col} className="px-2 py-1 bg-bg-secondary border border-border rounded text-xs text-text-secondary">
-                  {col}
-                </span>
-              ))}
+            <div className='flex gap-2 mt-2 flex-wrap justify-center'>
+              {['date', 'description', 'amount', 'type', 'category'].map(
+                col => (
+                  <span
+                    key={col}
+                    className='px-2 py-1 bg-bg-secondary border border-border rounded text-xs text-text-secondary'
+                  >
+                    {col}
+                  </span>
+                )
+              )}
             </div>
-            <p className="text-text-secondary text-xs mt-1">
-              CSV must include the above columns
+            <p className='text-text-secondary text-xs mt-1'>
+              Supported formats: CSV and SBI PDF statements
             </p>
           </div>
         )}
       </div>
 
+      {errors.length > 0 && (
+        <div className='rounded-2xl border border-red-200 bg-red-50 p-4'>
+          <p className='text-sm font-semibold text-red-800 mb-3'>
+            Upload validation failed
+          </p>
+          <ul className='list-disc list-inside text-sm text-red-700 space-y-1'>
+            {errors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Under the hood */}
-      <div className="stagger-item glass-card rounded-2xl p-5">
-        <p className="text-xs font-medium text-text-secondary uppercase tracking-widest mb-3">
+      <div className='stagger-item glass-card rounded-2xl p-5'>
+        <p className='text-xs font-medium text-text-secondary uppercase tracking-widest mb-3'>
           Under the hood
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
           {[
-            { step: "01", title: "Header mapping", desc: "Fuzzy matches your CSV headers to standard fields — works with any bank format" },
-            { step: "02", title: "Validation", desc: "Checks for required columns, empty files, and invalid formats before processing" },
-            { step: "03", title: "Storage", desc: "Transactions saved to PostgreSQL via Prisma with duplicate detection using transaction IDs" },
+            {
+              step: '01',
+              title: 'Header mapping',
+              desc: 'Fuzzy matches your CSV headers to standard fields — works with any bank format'
+            },
+            {
+              step: '02',
+              title: 'Validation',
+              desc: 'Checks for required columns, empty files, and invalid formats before processing'
+            },
+            {
+              step: '03',
+              title: 'Storage',
+              desc: 'Transactions saved to PostgreSQL via Prisma with duplicate detection using transaction IDs'
+            }
           ].map(item => (
-            <div key={item.step} className="flex gap-3">
-              <span className="text-accent font-mono text-sm mt-0.5">{item.step}</span>
+            <div key={item.step} className='flex gap-3'>
+              <span className='text-accent font-mono text-sm mt-0.5'>
+                {item.step}
+              </span>
               <div>
-                <p className="text-text-primary text-sm font-medium">{item.title}</p>
-                <p className="text-text-secondary text-xs mt-0.5 leading-relaxed">{item.desc}</p>
+                <p className='text-text-primary text-sm font-medium'>
+                  {item.title}
+                </p>
+                <p className='text-text-secondary text-xs mt-0.5 leading-relaxed'>
+                  {item.desc}
+                </p>
               </div>
             </div>
           ))}
@@ -213,25 +243,25 @@ const page = () => {
 
       {/* Transaction preview table */}
       {parsedData && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-text-primary font-medium">
+        <div className='mt-8'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-text-primary font-medium'>
               Preview
-              <span className="ml-2 text-xs text-text-secondary font-normal">
+              <span className='ml-2 text-xs text-text-secondary font-normal'>
                 {parsedData.length} transactions
               </span>
             </h2>
           </div>
 
-          <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+          <div className='bg-bg-card border border-border rounded-xl overflow-hidden'>
+            <div className='overflow-x-auto'>
+              <table className='w-full text-sm'>
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className='border-b border-border'>
                     {Object.keys(parsedData[0]).map((key, index) => (
                       <th
                         key={index}
-                        className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                        className='px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider'
                       >
                         {key}
                       </th>
@@ -242,12 +272,15 @@ const page = () => {
                   {parsedData.slice(0, 10).map((row, index) => (
                     <tr
                       key={index}
-                      className="border-b border-border/50 hover:bg-bg-secondary/50 transition-colors"
+                      className='border-b border-border/50 hover:bg-bg-secondary/50 transition-colors'
                     >
                       {Object.values(row).map((value, idx) => (
-                        <td key={idx} className="px-4 py-3 text-text-secondary text-xs">
+                        <td
+                          key={idx}
+                          className='px-4 py-3 text-text-secondary text-xs'
+                        >
                           {String(value).length > 30
-                            ? String(value).slice(0, 30) + "..."
+                            ? String(value).slice(0, 30) + '...'
                             : value}
                         </td>
                       ))}
@@ -257,8 +290,8 @@ const page = () => {
               </table>
             </div>
             {parsedData.length > 10 && (
-              <div className="px-4 py-3 border-t border-border">
-                <p className="text-text-secondary text-xs">
+              <div className='px-4 py-3 border-t border-border'>
+                <p className='text-text-secondary text-xs'>
                   Showing 10 of {parsedData.length} transactions
                 </p>
               </div>
