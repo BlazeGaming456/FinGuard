@@ -10,7 +10,7 @@ const navItems = [
     section: 'General',
     links: [
       { label: 'Dashboard', href: '/dashboard', icon: '▦' },
-      { label: 'Upload CSV', href: '/upload', icon: '↑' }
+      { label: 'Upload data', href: '/upload', icon: '↑' }
     ]
   },
   {

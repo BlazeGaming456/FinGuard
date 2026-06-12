@@ -7,12 +7,20 @@ import warnings
 import numpy as np
 import pandas as pd
 #For the API server
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from prophet import Prophet
 #For connection with the postgresql database
 import psycopg2
 from dotenv import load_dotenv
+
+import fitz
+import json
+import re
+import uuid
+import urllib.request
+import urllib.error
+from datetime import datetime
 
 load_dotenv()
 warnings.filterwarnings("ignore")
@@ -28,6 +36,230 @@ app.add_middleware (
     allow_methods = ['*'],
     allow_headers = ['*'],
 )
+
+# PDF extraction helpers
+
+PDF_DATE_PATTERNS = [
+    r"\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}",
+    r"\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}",
+]
+
+def extract_text_from_pdf(file_bytes: bytes) -> str:
+    try:
+        document = fitz.open(stream=file_bytes, filetype='pdf')
+        pages = [page.get_text('text') for page in document]
+        return '\n'.join(pages)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f'Unable to read PDF content: {exc}')
+
+
+def trim_to_transaction_table(raw_text: str) -> str:
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    if not lines:
+        return ''
+
+    header_candidates = re.compile(
+        r'\b(date|value date|transaction date|txn date|statement date|description|narration|withdrawal|deposit|amount|debit|credit)\b',
+        re.I,
+    )
+    start_index = next(
+        (idx for idx, line in enumerate(lines) if header_candidates.search(line) and re.search(r'\b(amount|debit|credit|withdrawal|deposit)\b', line, re.I)),
+        None,
+    )
+
+    if start_index is None:
+        start_index = next(
+            (idx for idx, line in enumerate(lines) if any(re.search(pattern, line) for pattern in PDF_DATE_PATTERNS)),
+            0,
+        )
+
+    date_regex = re.compile(r'\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}')
+    amount_regex = re.compile(r'[-\d,]+(?:\.\d+)?')
+    end_index = start_index
+    for idx, line in enumerate(lines[start_index:], start=start_index):
+        if date_regex.search(line) and amount_regex.search(line):
+            end_index = idx
+
+    return '\n'.join(lines[start_index : end_index + 1])
+
+
+def build_ollama_prompt(clean_text: str) -> str:
+    return (
+        'Extract the transaction table from the provided bank statement text and return only valid JSON. '
+        'The output must be a JSON array of objects. Each object must include exactly these fields: '
+        'date, description, amount, type, category, transaction_id. '
+        'Use ISO 8601 date format (YYYY-MM-DD), numeric amounts, and type must be CREDIT or DEBIT. '
+        'If a transaction type is unclear, infer it from the amount sign or description. '
+        'Do not include headers, page numbers, totals, summary lines, or any text outside the transaction rows. '
+        'If no transactions are present, return an empty JSON array. '
+        '\n\nBank statement text:\n"""\n'
+        + clean_text
+        + '\n"""\n'
+    )
+
+
+def call_ollama(prompt: str) -> str:
+    api_url = os.getenv('OLLAMA_API_URL', 'http://127.0.0.1:11434')
+    model = os.getenv('OLLAMA_MODEL', 'llama2')
+    endpoint = f"{api_url.rstrip('/')}/v1/chat/completions"
+    payload = {
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': 'You are a strict JSON extractor. Output only JSON.'},
+            {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0,
+        'max_tokens': 1500,
+    }
+
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={'Content-Type': 'application/json'},
+        method='POST',
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            raw_text = response.read().decode('utf-8')
+            parsed = json.loads(raw_text)
+    except urllib.error.URLError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f'Unable to reach Ollama API at {endpoint}: {getattr(exc, "reason", exc)}',
+        )
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f'Ollama API returned invalid JSON: {exc}',
+        )
+
+    if hasattr(response, 'status') and response.status >= 400:
+        raise HTTPException(status_code=response.status, detail='Ollama API returned an error')
+
+    choices = parsed.get('choices') or []
+    if not choices:
+        raise HTTPException(status_code=502, detail='Ollama returned no completion text.')
+
+    content = choices[0].get('message', {}).get('content') or choices[0].get('text')
+    if not content:
+        raise HTTPException(status_code=502, detail='Ollama returned empty completion output.')
+
+    return content.strip()
+
+
+def parse_ollama_json(output_text: str) -> list:
+    code_block = re.search(r'```(?:json)?\s*(.*?)```', output_text, re.S)
+    if code_block:
+        output_text = code_block.group(1).strip()
+
+    try:
+        parsed = json.loads(output_text)
+        if isinstance(parsed, dict) and 'transactions' in parsed:
+            parsed = parsed['transactions']
+        if isinstance(parsed, list):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    array_match = re.search(r'(\[.*\])', output_text, re.S)
+    if array_match:
+        try:
+            parsed = json.loads(array_match.group(1))
+            if isinstance(parsed, list):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+    raise HTTPException(
+        status_code=502,
+        detail='Ollama returned invalid JSON output. Ensure the model responds with a raw JSON array.',
+    )
+
+
+def normalize_transaction_date(value):
+    if not value:
+        return None
+
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+
+    raw = str(value).strip()
+    if raw.endswith('Z'):
+        raw = raw[:-1]
+    raw = raw.replace('/', '-').replace('.', '-').replace(' ', 'T')
+
+    for fmt in ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%S%z', '%d-%m-%Y', '%d-%m-%YT%H:%M:%S', '%m-%d-%Y']:
+        try:
+            return datetime.fromisoformat(raw).date().isoformat() if 'T' in raw else datetime.strptime(raw, fmt).date().isoformat()
+        except Exception:
+            continue
+
+    try:
+        return datetime.fromisoformat(raw).date().isoformat()
+    except Exception:
+        return None
+
+
+def normalize_amount(value):
+    if value is None:
+        return None
+    text = str(value).strip().replace('₹', '').replace(',', '').replace('(', '-').replace(')', '')
+    if text == '':
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def normalize_transaction_type(value, amount):
+    if value is not None:
+        text = str(value).strip().lower()
+        if any(keyword in text for keyword in ['credit', 'cr', 'deposit', 'received', 'inward']):
+            return 'CREDIT'
+        if any(keyword in text for keyword in ['debit', 'dr', 'withdrawal', 'payment', 'purchase', 'spent']):
+            return 'DEBIT'
+
+    if amount is not None:
+        try:
+            if float(amount) < 0:
+                return 'DEBIT'
+            return 'CREDIT'
+        except Exception:
+            pass
+
+    return 'DEBIT'
+
+
+def validate_transactions(raw_transactions):
+    validated = []
+
+    for item in raw_transactions:
+        if not isinstance(item, dict):
+            continue
+
+        date_value = normalize_transaction_date(item.get('date'))
+        amount_value = normalize_amount(item.get('amount'))
+        if date_value is None or amount_value is None:
+            continue
+
+        tx_type = normalize_transaction_type(item.get('type'), amount_value)
+        description = str(item.get('description') or '').strip() or 'Bank transaction'
+        category = str(item.get('category') or 'Uncategorized').strip() or 'Uncategorized'
+        transaction_id = str(item.get('transaction_id') or uuid.uuid4())
+
+        validated.append({
+            'transaction_id': transaction_id,
+            'date': date_value,
+            'description': description,
+            'amount': amount_value,
+            'type': tx_type,
+            'category': category,
+        })
+
+    return validated
+
 
 #1. Creating connection and fetching data from the database
 
@@ -248,6 +480,40 @@ def health():
     return {
         "status": "ok"
     }
+
+
+@app.post('/extract-pdf')
+def extract_pdf(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail='Only PDF files are supported for extraction.')
+
+    file_bytes = file.file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail='Uploaded PDF is empty.')
+
+    raw_text = extract_text_from_pdf(file_bytes)
+    trimmed_text = trim_to_transaction_table(raw_text)
+    if not trimmed_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail='Unable to extract transaction table from the PDF. Please upload a valid statement PDF.',
+        )
+
+    prompt = build_ollama_prompt(trimmed_text)
+    ollama_output = call_ollama(prompt)
+    raw_transactions = parse_ollama_json(ollama_output)
+    transactions = validate_transactions(raw_transactions)
+
+    if not transactions:
+        raise HTTPException(
+            status_code=422,
+            detail='Ollama returned no valid transactions. Please verify the PDF contains a standard bank statement table.',
+        )
+
+    return {
+        'transactions': transactions,
+    }
+
 
 # Monte Carlo Simulation
 

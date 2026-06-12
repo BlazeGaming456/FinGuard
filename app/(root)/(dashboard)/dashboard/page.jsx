@@ -681,8 +681,8 @@ const page = () => {
         <div className='flex items-center justify-center h-64'>
           <div className='flex flex-col items-center gap-4'>
             <p className='text-text-primary text-lg font-medium'>No transactions found</p>
-            <p className='text-text-secondary text-sm'>Please upload a CSV to get started.</p>
-            <Link href={'/dashboard/upload'} className='px-4 py-2 bg-accent text-white rounded'>Upload CSV</Link>
+            <p className='text-text-secondary text-sm'>Please upload data to get started.</p>
+            <Link href={'/dashboard/upload'} className='px-4 py-2 bg-accent text-white rounded'>Upload data</Link>
           </div>
         </div>
       ) : (

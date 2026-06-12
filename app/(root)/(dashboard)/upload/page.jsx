@@ -101,8 +101,8 @@ const page = () => {
   return (
     <div className='space-y-6'>
       <PageHeader
-        title='Upload Transactions'
-        subtitle='Upload your SBI bank statement PDF or a bank CSV to analyze your finances'
+        title='Upload Data'
+        subtitle='Upload your data through PDF or CSV to analyze your finances'
         badge='Data'
       />
 
@@ -163,7 +163,7 @@ const page = () => {
             </div>
             <div>
               <p className='text-text-primary font-medium'>
-                Drop your CSV file here
+                Drop your file here
               </p>
               <p className='text-text-secondary text-sm mt-1'>
                 or click to browse
@@ -182,7 +182,7 @@ const page = () => {
               )}
             </div>
             <p className='text-text-secondary text-xs mt-1'>
-              Supported formats: CSV and SBI PDF statements
+              Supported formats: CSV and PDF bank statements
             </p>
           </div>
         )}

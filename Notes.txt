@@ -85,6 +85,11 @@ Suggested order:
 5. README last once features are stable
 
 Final features -
-1. Allow for PDF input
-2. Proper PDF and CSV input validation
+1. Format the transactions from PDF by attaching tags
+2. Make it so that forecast and simulation show "insufficient data" when there isn't enough data
 3. Check, test, and modify Monte Carlo Simulation as required
+4. Horizon dropdown, etc., have unreadable fonts
+5. Clean the project directory
+6. Add proper documentation
+7. Host the application
+8. Go through the whole code
