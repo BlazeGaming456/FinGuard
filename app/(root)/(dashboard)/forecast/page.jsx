@@ -14,6 +14,7 @@ import {
   Area,
   ComposedChart
 } from 'recharts'
+import PageHeader from '@/components/PageHeader'
 
 const tooltipStyle = {
   backgroundColor: '#1e2130',
@@ -102,21 +103,17 @@ export default function ForecastPage () {
     : null
 
   return (
-    <div className='min-h-screen bg-bg-primary text-text-primary p-6 space-y-6'>
-      {/* ── Header ── */}
-      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
-        <div>
-          <h1 className='text-xl font-semibold'>Prophet Forecast</h1>
-          <p className='text-text-secondary text-sm mt-0.5'>
-            Time-series forecasting using Facebook Prophet
-          </p>
-        </div>
-        <div className='flex items-center gap-3'>
-          <label className='text-text-secondary text-xs'>Horizon</label>
-          <select
-            value={horizon}
-            onChange={e => setHorizon(Number(e.target.value))}
-            className='bg-bg-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent'
+    <div className='space-y-6'>
+      <PageHeader
+        title='Prophet Forecast'
+        subtitle="Time-series forecasting using Facebook Prophet"
+        badge='Phase 4'
+      >
+        <label className='text-text-secondary text-xs'>Horizon</label>
+        <select
+          value={horizon}
+          onChange={e => setHorizon(Number(e.target.value))}
+          className='input-field w-auto py-2'
           >
             {[3, 6, 9, 12].map(h => (
               <option key={h} value={h}>
@@ -124,15 +121,14 @@ export default function ForecastPage () {
               </option>
             ))}
           </select>
-          <button
-            onClick={fetchForecast}
-            disabled={loading}
-            className='px-4 py-2 bg-accent hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded-lg transition-colors'
-          >
-            {loading ? 'Running...' : 'Run Forecast'}
-          </button>
-        </div>
-      </div>
+        <button
+          onClick={fetchForecast}
+          disabled={loading}
+          className='btn-primary text-sm py-2 disabled:opacity-50'
+        >
+          {loading ? 'Running...' : 'Run Forecast'}
+        </button>
+      </PageHeader>
 
       {/* ── Error ── */}
       {error && (

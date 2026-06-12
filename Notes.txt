@@ -68,3 +68,23 @@ The forecasted data is used to simulate and get the required results.
 10. Properly comment and document all the code
 11. Understand the whole code
 12. Update to include relevant parameters and functions
+
+Things to complete tomorrow -
+1. Add authentication
+2. Fetch only the transactions of the particular user
+3. Add delete option for the transactions
+4. Add a settings page
+5. Do anything else as possible
+
+Additional features required -
+Suggested order:
+1. Loading states (quick wins, a few hours)
+2. Error boundaries (also quick)
+3. PDF upload with at least one bank format parsed
+4. Input validation naturally comes with the PDF parser since you're already normalizing data
+5. README last once features are stable
+
+Final features -
+1. Allow for PDF input
+2. Proper PDF and CSV input validation
+3. Check, test, and modify Monte Carlo Simulation as required

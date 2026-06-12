@@ -2,6 +2,7 @@
 
 import React, { use } from 'react'
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import { Pie, PieChart, Cell } from 'recharts'
 import {
   BarChart,
@@ -15,6 +16,7 @@ import {
 import { LineChart, Line } from 'recharts'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
+import PageHeader from '@/components/PageHeader'
 
 const page = () => {
   const [transactions, setTransactions] = useState([])
@@ -28,6 +30,7 @@ const page = () => {
   const [saving, setSaving] = useState(false)
   const [drillDown, setDrillDown] = useState(null)
   const [activeChart, setActiveChart] = useState('bar')
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const drillDownTransactions = useMemo(() => {
     if (!drillDown) return []
@@ -38,10 +41,17 @@ const page = () => {
   }, [drillDown, transactions, categoryOverride])
 
   const getData = async () => {
-    const res = await fetch('/api/fetch/transactions')
-    const data = await res.json()
-    console.log(data)
-    setTransactions(data.transactions)
+    try {
+      const res = await fetch('/api/fetch/transactions')
+      const data = await res.json()
+      console.log(data)
+      setTransactions(data.transactions || [])
+    } catch (err) {
+      console.error('Failed to fetch transactions', err)
+      setTransactions([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const statistics = async data => {
@@ -259,6 +269,23 @@ const page = () => {
   }
 
   const availableMonths = stats?.monthlyDataObject?.map(d => d.month) ?? []
+
+  const deleteTransaction = async id => {
+    try {
+      const res = await fetch('/api/delete/transaction', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+      if (!res.ok) throw new Error('Failed to delete')
+      // Remove from local state instantly — no need to refetch
+      setTransactions(prev => prev.filter(t => t.id !== id))
+    } catch (error) {
+      console.error('Delete failed:', error)
+    }
+  }
+
+  const [loading, setLoading] = useState(true)
 
   const saveRecategorization = async () => {
     setSaving(true)
@@ -604,41 +631,64 @@ const page = () => {
     backgroundColor: '#1e2130',
     border: '1px solid #2a2d3e',
     borderRadius: '8px',
-    color: '#ffffff',
-    fontSize: '12px'
+    fontSize: '12px',
+    padding: '8px 12px'
+  }
+
+  const ChartTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null
+    return (
+      <div style={customTooltipStyle}>
+        {label && (
+          <p style={{ color: '#6366f1', margin: '0 0 4px', fontWeight: 500 }}>
+            {label}
+          </p>
+        )}
+        {payload.map((entry, i) => (
+          <p key={i} style={{ color: '#6366f1', margin: 0 }}>
+            {entry.name}: {entry.value?.toLocaleString?.() ?? entry.value}
+          </p>
+        ))}
+      </div>
+    )
   }
 
   return (
-    <div className='min-h-screen bg-bg-primary text-text-primary p-6 space-y-6'>
-      {/* ── Top bar ── */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-xl font-semibold text-text-primary'>Dashboard</h1>
-          <p className='text-text-secondary text-sm mt-0.5'>
-            {dataQuality.dateRange
-              ? `Data range: ${dataQuality.dateRange}`
-              : 'Overview of your financial health'}
-          </p>
-        </div>
+    <div className='space-y-6'>
+      <PageHeader
+        title='Dashboard'
+        subtitle={dataQuality.dateRange
+          ? `Data range: ${dataQuality.dateRange}`
+          : 'Overview of your financial health'}
+        badge='Overview'
+      >
         <button
           onClick={exportPDF}
-          className='flex items-center gap-2 px-4 py-2 bg-bg-card border border-border rounded-lg text-sm text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors'
+          className='btn-ghost text-sm'
         >
           ↓ Export PDF
         </button>
-      </div>
+      </PageHeader>
 
-      {Object.keys(stats).length === 0 ? (
+      {loading ? (
         <div className='flex items-center justify-center h-64'>
           <div className='flex flex-col items-center gap-3'>
             <div className='w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin' />
             <p className='text-text-secondary text-sm'>Loading your data...</p>
           </div>
         </div>
+      ) : transactions.length === 0 ? (
+        <div className='flex items-center justify-center h-64'>
+          <div className='flex flex-col items-center gap-4'>
+            <p className='text-text-primary text-lg font-medium'>No transactions found</p>
+            <p className='text-text-secondary text-sm'>Please upload a CSV to get started.</p>
+            <Link href={'/dashboard/upload'} className='px-4 py-2 bg-accent text-white rounded'>Upload CSV</Link>
+          </div>
+        </div>
       ) : (
         <>
           {/* ── Summary cards ── */}
-          <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
+          <div className='stagger-item grid grid-cols-2 lg:grid-cols-4 gap-4'>
             {[
               {
                 label: 'Total Income',
@@ -691,7 +741,7 @@ const page = () => {
           </div>
 
           {/* ── Charts section ── */}
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
+          <div className='stagger-item grid grid-cols-1 lg:grid-cols-3 gap-4'>
             {/* Bar / Line chart — 2/3 width */}
             <div className='lg:col-span-2 bg-bg-card border border-border rounded-xl p-5'>
               <div className='flex items-center justify-between mb-5'>
@@ -739,7 +789,7 @@ const page = () => {
                     axisLine={false}
                     tickLine={false}
                   />
-                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Tooltip content={<ChartTooltip />} />
                   <Bar
                     dataKey='income'
                     fill='#22C55E'
@@ -776,7 +826,7 @@ const page = () => {
                     axisLine={false}
                     tickLine={false}
                   />
-                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Tooltip content={<ChartTooltip />} />
                   <Line
                     type='monotone'
                     dataKey='income'
@@ -829,7 +879,7 @@ const page = () => {
                       />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Tooltip content={<ChartTooltip />} />
                 </PieChart>
               )}
               {/* Category legend */}
@@ -1044,7 +1094,8 @@ const page = () => {
                         'Description',
                         'Category',
                         'Type',
-                        'Amount'
+                        'Amount',
+                        'Actions'
                       ].map(h => (
                         <th
                           key={h}
@@ -1088,11 +1139,11 @@ const page = () => {
                         <td className='px-4 py-3'>
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full border
-                            ${
-                              t.type === 'CREDIT'
-                                ? 'text-success bg-success/10 border-success/20'
-                                : 'text-danger bg-danger/10 border-danger/20'
-                            }`}
+                  ${
+                    t.type === 'CREDIT'
+                      ? 'text-success bg-success/10 border-success/20'
+                      : 'text-danger bg-danger/10 border-danger/20'
+                  }`}
                           >
                             {t.type}
                           </span>
@@ -1104,6 +1155,37 @@ const page = () => {
                         >
                           {t.type === 'CREDIT' ? '+' : '-'}₹
                           {t.amount?.toLocaleString()}
+                        </td>
+
+                        {/* ── Delete cell ── */}
+                        <td className='px-4 py-3'>
+                          {confirmDelete === t.id ? (
+                            // Two-step confirm — shows inline after first click
+                            <div className='flex items-center gap-2'>
+                              <button
+                                onClick={() => {
+                                  deleteTransaction(t.id)
+                                  setConfirmDelete(null)
+                                }}
+                                className='text-xs text-danger hover:text-red-400 border border-danger/30 bg-danger/10 px-2 py-0.5 rounded transition-colors'
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setConfirmDelete(null)}
+                                className='text-xs text-text-secondary hover:text-text-primary transition-colors'
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDelete(t.id)}
+                              className='text-text-secondary hover:text-danger transition-colors text-xs border border-transparent hover:border-danger/30 px-2 py-0.5 rounded'
+                            >
+                              Delete
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -13,6 +13,7 @@ import {
   BarChart,
   Bar
 } from 'recharts'
+import PageHeader from '@/components/PageHeader'
 
 const tooltipStyle = {
   backgroundColor: '#1e2130',
@@ -137,17 +138,15 @@ export default function SimulatePage () {
   const m = data?.normal
 
   return (
-    <div className='min-h-screen bg-bg-primary text-text-primary p-6 space-y-6'>
-      {/* ── Header ── */}
-      <div>
-        <h1 className='text-xl font-semibold'>Monte Carlo Simulation</h1>
-        <p className='text-text-secondary text-sm mt-0.5'>
-          1,000 simulated financial futures based on your transaction history
-        </p>
-      </div>
+    <div className='space-y-6'>
+      <PageHeader
+        title='Monte Carlo Simulation'
+        subtitle='1,000 simulated financial futures based on your transaction history'
+        badge='Phase 5'
+      />
 
       {/* ── Input panel + results side by side on large screens ── */}
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+      <div className='stagger-item grid grid-cols-1 lg:grid-cols-3 gap-6'>
         {/* Input panel */}
         <div className='lg:col-span-1 space-y-4'>
           <div className='bg-bg-card border border-border rounded-xl p-5'>

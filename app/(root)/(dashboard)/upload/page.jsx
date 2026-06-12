@@ -3,6 +3,7 @@
 import React from 'react'
 import { useState } from 'react'
 import Papa from 'papaparse'
+import PageHeader from '@/components/PageHeader'
 
 const page = () => {
   const [selectedFile, setSelectedFile] = useState(null)
@@ -114,22 +115,20 @@ const page = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary p-8">
+    <div className="space-y-6">
 
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-text-primary">Upload Transactions</h1>
-        <p className="text-text-secondary text-sm mt-1">
-          Upload your bank statement CSV to analyse your finances
-        </p>
-      </div>
+      <PageHeader
+        title="Upload Transactions"
+        subtitle="Upload your bank statement CSV to analyse your finances"
+        badge="Data"
+      />
 
       {/* Upload area */}
       <div
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer
+        className={`stagger-item relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 cursor-pointer
           ${isDragging
             ? 'border-accent bg-accent/10'
             : 'border-border bg-bg-card hover:border-accent/50 hover:bg-bg-card/80'
@@ -191,7 +190,7 @@ const page = () => {
       </div>
 
       {/* Under the hood */}
-      <div className="mt-6 bg-bg-card border border-border rounded-xl p-5">
+      <div className="stagger-item glass-card rounded-2xl p-5">
         <p className="text-xs font-medium text-text-secondary uppercase tracking-widest mb-3">
           Under the hood
         </p>
