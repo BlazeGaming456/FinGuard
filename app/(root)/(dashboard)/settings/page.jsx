@@ -82,11 +82,7 @@ export default function SettingsPage () {
     <div className="space-y-6 max-w-2xl">
       <PageHeader
         title="Settings"
-        subtitle={
-          <>
-            Signed in as <span className="text-accent-light">{userEmail || "..."}</span>
-          </>
-        }
+        subtitle={`Phase 3: Account management for ${userEmail || '...'}`}
         badge="Account"
       />
 

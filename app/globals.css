@@ -115,6 +115,18 @@ textarea {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
+/* Select dropdown styling for readability */
+select,
+.input-field {
+  color: #ffffff;
+  font-family: inherit;
+}
+
+select option {
+  color: #0f172a;
+  background: #ffffff;
+}
+
 /* Page transitions */
 @keyframes page-enter {
   from {
@@ -164,6 +176,15 @@ textarea {
 
 .page-content .bg-bg-card:hover {
   border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.12), 0 20px 40px rgba(99, 102, 241, 0.12);
+}
+
+.page-content button:hover,
+.page-content a:hover,
+.page-content input:hover,
+.page-content select:hover,
+.page-content textarea:hover {
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.12), 0 12px 28px rgba(99, 102, 241, 0.08);
 }
 
 @media (prefers-reduced-motion: reduce) {

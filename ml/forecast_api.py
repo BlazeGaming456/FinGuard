@@ -393,13 +393,13 @@ def interpret(expense_fc: dict, income_fc: dict) -> list[dict]:
         insights.append({
             "type": "expense_rising",
             "severity": "high" if (exp_change_pct > 25) else "medium",
-            "message": f"Expenses are projected to rise {exp_change_pct}% over the forecast window"
+            "message": f"Expenses are projected to rise {exp_change_pct:.2f}% over the forecast window"
         })
     elif (exp_change_pct < -10):
         insights.append({
             "type": "expense_falling",
             "severity": "low",
-            "message": f"Expenses are projected to fall {abs(exp_change_pct)}% - good trajectory"
+            "message": f"Expenses are projected to fall {abs(exp_change_pct):.2f}% - good trajectory"
         })
 
     #Saving stress
@@ -517,6 +517,17 @@ def extract_pdf(file: UploadFile = File(...)):
 
 # Monte Carlo Simulation
 
+def sample_bounded_amount(mu, sigma, cap_multiplier=3.0):
+    """Sample a non-negative amount with truncated normal tails."""
+    mu = float(max(mu, 0.0))
+    sigma = float(max(sigma, 0.0))
+    if sigma == 0:
+        return mu
+    raw = np.random.normal(mu, sigma)
+    upper = max(mu + cap_multiplier * sigma, mu * 2.0)
+    return float(np.clip(raw, 0.0, upper))
+
+
 def monte_carlo_simulation(
         expense_fc: dict,
         income_fc: dict,
@@ -547,14 +558,13 @@ def monte_carlo_simulation(
             savings = current_savings
 
             for month in range(horizon):
-                #Ignore negative expense
-                expense = max(0, np.random.normal(exp_means[month], exp_stds[month]))
+                expense = sample_bounded_amount(exp_means[month], exp_stds[month])
 
                 #In job loss scenario, zero income for specified months
                 if (month < job_loss_months):
                     income = 0
                 else:
-                    income = max(0, np.random.normal(inc_means[month], inc_stds[month]))
+                    income = sample_bounded_amount(inc_means[month], inc_stds[month])
                 
                 savings = savings + income - expense
                 all_savings_paths[sim, month] = savings
@@ -599,13 +609,16 @@ def monte_carlo_simulation(
         p75 = float(np.percentile(final_savings, 75))
         p95 = float(np.percentile(final_savings, 95))
 
-        #VaR - How much you could lose from current savings
-        var_95 = max(0,float(current_savings - p5))
-        var_90 = max(0,float(current_savings - p25))
+        #VaR - How much you could lose from current savings (capped at starting balance)
+        var_95 = min(max(0, float(current_savings - p5)), current_savings)
+        var_90 = min(max(0, float(current_savings - p25)), current_savings)
 
-        #CVaR - Average of worst 5% outcomes
-        worst_5_pct = final_savings[final_savings <= np.percentile(final_savings,5)]
-        cvar_95 = max(0,float(current_savings - np.mean(worst_5_pct)) if len(worst_5_pct)>0 else 0.0)
+        #CVaR - Average of worst 5% outcomes (capped at starting balance)
+        worst_5_pct = final_savings[final_savings <= np.percentile(final_savings, 5)]
+        cvar_95 = min(
+            max(0, float(current_savings - np.mean(worst_5_pct)) if len(worst_5_pct) > 0 else 0.0),
+            current_savings,
+        )
 
         #Risk of going broke at any point during the simulation
         went_negative = np.any(paths<0,axis=1) #Checks if it becomes false at any point in the row
@@ -635,17 +648,15 @@ def monte_carlo_simulation(
         avg_drawdown = float(np.mean(drawdowns))
         worst_drawdown = float(np.max(drawdowns))
 
-        #Months until savings hit zero (Job loss scenario)
-        months_survivable = None
-        if (job_loss_months > 0):
-            first_negative = []
-            for sim in range(n_simulation):
-                neg_months = np.where(paths[sim] < 0)[0] #np.where() return tuple of values, where the first element return the array of indices
-                if (len(neg_months) > 0):
-                    first_negative.append(neg_months[0])
-                else:
-                    first_negative.append(horizon)
-            months_survivable = float(np.mean(first_negative))
+        # Conditional depletion: only among simulations that hit zero
+        depletion_months = []
+        for sim in range(n_simulation):
+            neg_months = np.where(paths[sim] < 0)[0]
+            if len(neg_months) > 0:
+                depletion_months.append(int(neg_months[0]) + 1)
+        conditional_median_depletion_month = (
+            float(np.median(depletion_months)) if depletion_months else None
+        )
 
         return {
             "percentiles": {"p5": p5, "p25": p25, "p50": p50, "p75": p75, "p95": p95},
@@ -656,17 +667,23 @@ def monte_carlo_simulation(
             "recovery_probability": recovery_probability,
             "avg_drawdown": avg_drawdown,
             "worst_drawdown": worst_drawdown,
-            "months_survivable": months_survivable,
+            "conditional_median_depletion_month": conditional_median_depletion_month,
+            "depletion_simulation_count": len(depletion_months),
         }
 
-    #iv. Affordability timeline
+    #iv. Affordability timeline — P(savings at month >= target), including today
     affordabilty_timeline = []
-    if (target_purchase > 0):
+    can_afford_now = current_savings >= target_purchase if target_purchase > 0 else False
+    if target_purchase > 0:
+        affordabilty_timeline.append({
+            "month": 0,
+            "probability": 1.0 if can_afford_now else 0.0,
+        })
         for month_idx in range(horizon):
             savings_at_month = normal_paths[:, month_idx]
-            prob = float(np.mean(savings_at_month>=target_purchase))
+            prob = float(np.mean(savings_at_month >= target_purchase))
             affordabilty_timeline.append({
-                "month": month_idx+1,
+                "month": month_idx + 1,
                 "probability": prob,
             })
 
@@ -757,25 +774,48 @@ def monte_carlo_simulation(
         {
             "type": "safe_spending",
             "severity": "low",
-            "message": f"You can safely increase monthly spending by ₹{safe_extra_spend:,.0f} while keeping deficit risk below 20%."
+            "message": f"Additional monthly spending before deficit risk exceeds 20%: ₹{safe_extra_spend:,.0f}."
         },
     ]
 
+    if m["conditional_median_depletion_month"] is not None:
+        never_deplete_pct = (1 - m["risk_of_deficit"]) * 100
+        deplete_pct = m["risk_of_deficit"] * 100
+        interpretations.append({
+            "type": "depletion",
+            "severity": "medium" if m["risk_of_deficit"] > 0.2 else "low",
+            "message": (
+                f"{never_deplete_pct:.0f}% of simulations never exhaust savings. "
+                f"Among the {deplete_pct:.0f}% that do, median depletion occurs in month "
+                f"{int(round(m['conditional_median_depletion_month']))}."
+            ),
+        })
+
     #x. Afforability prediction
     if target_purchase > 0 and affordabilty_timeline:
-        #Find first month where probabiltiy crosses 50%
-        likely_month = next(
-            (entry["month"] for entry in affordabilty_timeline if entry["probability"]>0.5),None
-        )
-        interpretations.append({
-            "type": "affordability",
-            "severity": "low" if likely_month and likely_month <= 3 else "medium",
-            "message": (
-                f"You are likely to afford ₹{target_purchase:,.0f} by month {likely_month}."
-                if likely_month
-                else f"Less than 50% chance of affording ₹{target_purchase:,.0f} within {horizon} months."
+        if can_afford_now:
+            interpretations.append({
+                "type": "affordability",
+                "severity": "low",
+                "message": (
+                    f"You already have enough savings (₹{current_savings:,.0f}) to afford "
+                    f"₹{target_purchase:,.0f} today."
+                ),
+            })
+        else:
+            likely_month = next(
+                (entry["month"] for entry in affordabilty_timeline if entry["probability"] > 0.5),
+                None,
             )
-        })
+            interpretations.append({
+                "type": "affordability",
+                "severity": "low" if likely_month and likely_month <= 3 else "medium",
+                "message": (
+                    f"You are likely to afford ₹{target_purchase:,.0f} by month {likely_month}."
+                    if likely_month
+                    else f"Less than 50% chance of affording ₹{target_purchase:,.0f} within {horizon} months."
+                ),
+            })
     
     return {
         "status": "ok",
@@ -793,6 +833,7 @@ def monte_carlo_simulation(
             "reduced_income": reduced_income_metrics["percentiles"]["p50"],
         },
         "affordability_timeline": affordabilty_timeline,
+        "can_afford_now": can_afford_now,
         "emergency_fund": {
             "target":              emergency_fund_target,
             "gap":                 emergency_fund_gap,

@@ -31,6 +31,7 @@ const page = () => {
   const [drillDown, setDrillDown] = useState(null)
   const [activeChart, setActiveChart] = useState('bar')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   const drillDownTransactions = useMemo(() => {
     if (!drillDown) return []
@@ -64,9 +65,10 @@ const page = () => {
         .reduce((acc, t) => acc + t.amount, 0)
       const balance = totalIncome - totalExpense
       const rawCategoryWise = data.reduce((acc, t) => {
-        if (t.category === 'Income') return acc
-        if (!acc[t.category]) acc[t.category] = 0
-        acc[t.category] += t.amount
+        if (t.type !== 'DEBIT') return acc
+        const category = String(t.category || 'Uncategorized').trim() || 'Uncategorized'
+        if (!acc[category]) acc[category] = 0
+        acc[category] += t.amount
         return acc
       }, {})
       const categoryWise = Object.entries(rawCategoryWise).map(
@@ -108,13 +110,13 @@ const page = () => {
         else acc[month].expense += t.amount
         return acc
       }, {})
-      const monthlyDataObject = Object.entries(monthlyData).map(
-        ([key, value]) => ({
+      const monthlyDataObject = Object.entries(monthlyData)
+        .map(([key, value]) => ({
           month: key,
           income: value.income,
           expense: value.expense
-        })
-      )
+        }))
+        .sort((a, b) => new Date(a.month) - new Date(b.month))
       const transactionCount = data.length
       const maxExpenseCategory = categoryWise.reduce(
         (max, category) => (max.value > category.value ? max : category),
@@ -127,7 +129,8 @@ const page = () => {
         },
         { amount: 0 }
       )
-      const averageDailyExpense = totalExpense / monthlyExpenseData.length
+      const averageDailyExpense =
+        monthlyExpenseData.length > 0 ? totalExpense / monthlyExpenseData.length : 0
       setStats({
         totalIncome,
         totalExpense,
@@ -147,6 +150,7 @@ const page = () => {
   const advisory = () => {
     if (filteredTransactions.length > 0) {
       const monthlyDataObject = stats.monthlyDataObject
+      if (!monthlyDataObject?.length) return
       let curScore = 0
       let deficitMonths = 0
       for (let i = monthlyDataObject.length - 1; i >= 0; i--) {
@@ -156,21 +160,17 @@ const page = () => {
       }
       if (deficitMonths >= 3) curScore += 3
       else if (deficitMonths > 0) curScore += 1
-      let savingsRates = 0
-      let n = 0
-      for (let i = monthlyDataObject.length - 1; i >= 0; i--) {
-        let val =
-          (monthlyDataObject[i].income - monthlyDataObject[i].expense) /
-          monthlyDataObject[i].income
-        n++
-        savingsRates += val
-      }
-      savingsRates = (savingsRates * 100) / n
+      const totalIncome = stats.totalIncome || 0
+      const totalExpense = stats.totalExpense || 0
+      const savingsRates =
+        totalIncome > 0
+          ? ((totalIncome - totalExpense) / totalIncome) * 100
+          : 0
       if (savingsRates < 5) curScore += 3
       else if (savingsRates < 10) curScore += 1
       const emiRate = 0
       const expenseToIncomeRatio =
-        (stats.totalExpense / stats.totalIncome) * 100
+        totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0
       if (expenseToIncomeRatio > 90) curScore += 3
       else if (expenseToIncomeRatio > 75) curScore += 1
       let spikes = 0
@@ -193,16 +193,20 @@ const page = () => {
       }
       if (isIncreasing) curScore += 3
       let incomeDropPercent = 0
-      if (monthlyDataObject.length >= 3) {
-        const last3Months = monthlyDataObject.slice(-3)
-        let avgPercentDrop = 0
-        for (let i = 0; i < last3Months.length - 2; i++) {
-          let percentDrop =
-            (last3Months[i].income - last3Months[i + 1].income) /
-            last3Months[i].income
-          avgPercentDrop += percentDrop
+      let incomeDropContext = ''
+      const sortedMonthly = [...monthlyDataObject].sort(
+        (a, b) => new Date(a.month) - new Date(b.month)
+      )
+      if (sortedMonthly.length >= 2) {
+        const lastMonth = sortedMonthly[sortedMonthly.length - 1]
+        const prevMonth = sortedMonthly[sortedMonthly.length - 2]
+        if (prevMonth.income > 0) {
+          incomeDropPercent =
+            ((prevMonth.income - lastMonth.income) / prevMonth.income) * 100
+          if (incomeDropPercent > 10) {
+            incomeDropContext = `${prevMonth.month} (₹${prevMonth.income.toLocaleString()}) → ${lastMonth.month} (₹${lastMonth.income.toLocaleString()})`
+          }
         }
-        incomeDropPercent = (avgPercentDrop * 100) / (last3Months.length - 2)
       }
       if (incomeDropPercent > 20) curScore += 3
       else if (incomeDropPercent > 10) curScore += 1
@@ -247,7 +251,9 @@ const page = () => {
       ).length
       const uniqueCategories = [
         ...new Set(transactions.map(t => t.category))
-      ].filter(c => c != 'Income' || c != 'Food' || c != 'Entertainment')
+      ].filter(
+        c => c && c !== 'Income' && c !== 'Food' && c !== 'Entertainment'
+      )
       setDataQuality({
         totalTransactions,
         dateRange: `${firstDate} → ${lastDate}`,
@@ -284,8 +290,6 @@ const page = () => {
       console.error('Delete failed:', error)
     }
   }
-
-  const [loading, setLoading] = useState(true)
 
   const saveRecategorization = async () => {
     setSaving(true)
@@ -627,6 +631,71 @@ const page = () => {
         ].filter(Boolean)
       : []
 
+  const uncategorizedAmount =
+    stats.categoryWise?.find(c => c.name === 'Uncategorized')?.value || 0
+  const uncategorizedPercent =
+    stats.totalExpense > 0
+      ? (uncategorizedAmount / stats.totalExpense) * 100
+      : 0
+
+  const scoreExplanationItems = [
+    {
+      label: 'FinGuard Score',
+      value: score,
+      description:
+        'A higher score means more financial risk. It is built from the advisory drivers below.'
+    },
+    {
+      label: 'Persistent Deficit',
+      value:
+        analytics.deficitMonths > 0
+          ? `${analytics.deficitMonths} month(s)`
+          : 'None',
+      description:
+        'If recent months spent more than earned, this raises your risk score because it signals cash flow stress.'
+    },
+    {
+      label: 'Savings Rate',
+      value:
+        analytics.savingsRates != null
+          ? `${analytics.savingsRates.toFixed(1)}%`
+          : 'N/A',
+      description:
+        'Calculated as (income − expense) ÷ income. A healthy buffer is typically 20% or more.'
+    },
+    {
+      label: 'Expense Ratio',
+      value:
+        analytics.expenseToIncomeRatio != null
+          ? `${analytics.expenseToIncomeRatio.toFixed(1)}%`
+          : 'N/A',
+      description:
+        'Shows how much of your income is used for expenses. Higher ratios leave less room for savings and emergencies.'
+    },
+    {
+      label: 'Expense Spikes',
+      value: analytics.spikes ?? 0,
+      description:
+        'Large month-to-month jumps in spending are flagged because they can indicate unstable or unusual costs.'
+    },
+    {
+      label: 'Income Drop',
+      value:
+        analytics.incomeDropPercent != null
+          ? `${analytics.incomeDropPercent.toFixed(1)}%`
+          : 'N/A',
+      description:
+        'Recent income falls increase risk, especially when expenses remain high or unchanged.'
+    }
+  ]
+
+  const scoreExplanationNote =
+    uncategorizedPercent > 0
+      ? `Note: ${uncategorizedPercent.toFixed(
+          1
+        )}% of expense transactions are still categorized as Uncategorized, so category-level insights may be incomplete.`
+      : 'All expenses are categorized, so category-level insights are more reliable.'
+
   const customTooltipStyle = {
     backgroundColor: '#1e2130',
     border: '1px solid #2a2d3e',
@@ -658,8 +727,8 @@ const page = () => {
       <PageHeader
         title='Dashboard'
         subtitle={dataQuality.dateRange
-          ? `Data range: ${dataQuality.dateRange}`
-          : 'Overview of your financial health'}
+          ? `Phase 2: Your financial overview · ${dataQuality.dateRange}`
+          : 'Phase 2: Your financial overview'}
         badge='Overview'
       >
         <button
@@ -682,7 +751,7 @@ const page = () => {
           <div className='flex flex-col items-center gap-4'>
             <p className='text-text-primary text-lg font-medium'>No transactions found</p>
             <p className='text-text-secondary text-sm'>Please upload data to get started.</p>
-            <Link href={'/dashboard/upload'} className='px-4 py-2 bg-accent text-white rounded'>Upload data</Link>
+            <Link href={'/upload'} className='px-4 py-2 bg-accent text-white rounded'>Upload data</Link>
           </div>
         </div>
       ) : (
@@ -717,7 +786,7 @@ const page = () => {
               },
               {
                 label: 'FinGuard Score',
-                value: score,
+                value: `${score}/15`,
                 sub: riskLabel,
                 color: riskColor,
                 border: 'border-accent/20',
@@ -726,7 +795,11 @@ const page = () => {
             ].map((card, i) => (
               <div
                 key={i}
-                className={`bg-bg-card border ${card.border} rounded-xl p-4`}
+                className={`bg-bg-card border ${card.border} rounded-xl p-4 transition-all duration-250 ${
+                  card.label === 'FinGuard Score'
+                    ? 'hover:shadow-[0_0_0_1px_rgba(99,102,241,0.3),0_8px_32px_rgba(99,102,241,0.16)]'
+                    : ''
+                }`}
               >
                 <div className='flex items-center gap-2 mb-3'>
                   <div className={`w-2 h-2 rounded-full ${card.dot}`} />
@@ -780,12 +853,12 @@ const page = () => {
                   <CartesianGrid strokeDasharray='3 3' stroke='#2a2d3e' />
                   <XAxis
                     dataKey='month'
-                    tick={{ fill: '#8b92a5', fontSize: 11 }}
+                    tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: '#8b92a5', fontSize: 11 }}
+                    tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -803,7 +876,7 @@ const page = () => {
                     isAnimationActive
                   />
                   <Legend
-                    wrapperStyle={{ color: '#8b92a5', fontSize: '12px' }}
+                    wrapperStyle={{ color: '#b0b8c5', fontSize: '13px', fontWeight: 500 }}
                   />
                 </BarChart>
               )}
@@ -817,12 +890,12 @@ const page = () => {
                   <CartesianGrid strokeDasharray='3 3' stroke='#2a2d3e' />
                   <XAxis
                     dataKey='month'
-                    tick={{ fill: '#8b92a5', fontSize: 11 }}
+                    tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: '#8b92a5', fontSize: 11 }}
+                    tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -844,7 +917,7 @@ const page = () => {
                     isAnimationActive
                   />
                   <Legend
-                    wrapperStyle={{ color: '#8b92a5', fontSize: '12px' }}
+                    wrapperStyle={{ color: '#b0b8c5', fontSize: '13px', fontWeight: 500 }}
                   />
                 </LineChart>
               )}
@@ -946,92 +1019,141 @@ const page = () => {
             </div>
           )}
 
-          {/* ── Advisory flags ── */}
-          {advisoryFlags.length > 0 && (
-            <div className='bg-bg-card border border-border rounded-xl p-5'>
-              <div className='flex items-center gap-2 mb-4'>
-                <p className='text-text-primary font-medium text-sm'>
-                  Advisory Flags
-                </p>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full border ${riskBg} ${riskColor}`}
-                >
-                  {riskLabel} · Score {score}
-                </span>
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                {advisoryFlags.map((flag, i) => (
-                  <div
-                    key={i}
-                    className={`flex gap-3 p-3 rounded-lg border
-                      ${
-                        flag.severity === 'high'
-                          ? 'bg-danger/5 border-danger/20'
-                          : 'bg-warning/5 border-warning/20'
-                      }`}
+          {/* ── Advisory flags + score explanation (stacked full-width) ── */}
+          <div className='space-y-6'>
+            <div className='bg-bg-card border border-border rounded-xl p-5 w-full'>
+                <div className='flex items-center gap-2 mb-4'>
+                  <p className='text-text-primary font-medium text-sm'>
+                    Advisory Flags
+                  </p>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full border ${riskBg} ${riskColor}`}
                   >
-                    <span
-                      className={
-                        flag.severity === 'high'
-                          ? 'text-danger'
-                          : 'text-warning'
-                      }
-                    >
-                      ⚠
-                    </span>
-                    <div>
-                      <p
-                        className={`text-sm font-medium ${
-                          flag.severity === 'high'
-                            ? 'text-danger'
-                            : 'text-warning'
-                        }`}
+                    {riskLabel} · Score {score}
+                  </span>
+                </div>
+
+                {advisoryFlags.length > 0 ? (
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                    {advisoryFlags.map((flag, i) => (
+                      <div
+                        key={i}
+                        className={`flex gap-3 p-3 rounded-lg border
+                          ${
+                            flag.severity === 'high'
+                              ? 'bg-danger/5 border-danger/20'
+                              : 'bg-warning/5 border-warning/20'
+                          }`}
                       >
-                        {flag.label}
-                      </p>
-                      <p className='text-text-secondary text-xs mt-0.5'>
-                        {flag.desc}
-                      </p>
-                    </div>
+                        <span
+                          className={
+                            flag.severity === 'high'
+                              ? 'text-danger'
+                              : 'text-warning'
+                          }
+                        >
+                          ⚠
+                        </span>
+                        <div>
+                          <p
+                            className={`text-sm font-medium ${
+                              flag.severity === 'high'
+                                ? 'text-danger'
+                                : 'text-warning'
+                            }`}
+                          >
+                            {flag.label}
+                          </p>
+                          <p className='text-text-secondary text-xs mt-0.5'>
+                            {flag.desc}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className='rounded-2xl border border-border/70 bg-bg-secondary p-4 text-text-secondary text-sm'>
+                    No advisory flags detected. Your score is still based on cash flow, savings, and expense behavior.
+                  </div>
+                )}
+
+                <div className='mt-4 p-3 bg-bg-secondary rounded-lg border border-border'>
+                  <p className='text-text-secondary text-xs leading-relaxed'>
+                    <span className='text-text-primary font-medium'>
+                      Summary —{' '}
+                    </span>
+                    You are currently in a{' '}
+                    <span className={riskColor}>{riskLabel.toLowerCase()}</span>{' '}
+                    zone.{' '}
+                    {analytics.deficitMonths > 0 &&
+                      `Expenses exceeded income for ${analytics.deficitMonths} consecutive month(s). `}
+                    {analytics.savingsRates < 20 &&
+                      `Savings rate is ${analytics.savingsRates?.toFixed(
+                        1
+                      )}%, below the recommended 20%. `}
+                    {analytics.expenseToIncomeRatio > 75 &&
+                      `Expense-to-income ratio is high at ${analytics.expenseToIncomeRatio?.toFixed(
+                        1
+                      )}%. `}
+                    {analytics.spikes > 0 &&
+                      `${analytics.spikes} unusual expense spike(s) detected. `}
+                    {analytics.isIncreasing &&
+                      `Expenses have been rising consistently over the last 3 months. `}
+                    {analytics.incomeDropPercent > 10 &&
+                      `Income has dropped by ${analytics.incomeDropPercent?.toFixed(
+                        1
+                      )}% recently. `}
+                    {score < 5 &&
+                      analytics.deficitMonths === 0 &&
+                      analytics.savingsRates >= 20 &&
+                      `Overall finances look healthy — keep it up.`}
+                  </p>
+                </div>
               </div>
 
-              {/* Financial summary sentence */}
-              <div className='mt-4 p-3 bg-bg-secondary rounded-lg border border-border'>
-                <p className='text-text-secondary text-xs leading-relaxed'>
-                  <span className='text-text-primary font-medium'>
-                    Summary —{' '}
+              <div className='rounded-3xl border border-border/70 bg-gradient-to-br from-slate-950/70 to-slate-900/85 p-5 w-full shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition-all duration-250 hover:shadow-[0_0_0_1px_rgba(99,102,241,0.3),0_20px_50px_rgba(99,102,241,0.12)]'>
+                <div className='flex items-start justify-between gap-3 mb-4'>
+                  <div>
+                    <p className='text-text-primary font-semibold text-sm'>
+                      FinGuard score explanation
+                    </p>
+                    <p className='text-text-secondary text-xs mt-1'>
+                      Key factors that influence your current risk score.
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs font-semibold px-3 py-1 rounded-full border ${riskBg} ${riskColor}`}
+                  >
+                    {riskLabel}
                   </span>
-                  You are currently in a{' '}
-                  <span className={riskColor}>{riskLabel.toLowerCase()}</span>{' '}
-                  zone.{' '}
-                  {analytics.deficitMonths > 0 &&
-                    `Expenses exceeded income for ${analytics.deficitMonths} consecutive month(s). `}
-                  {analytics.savingsRates < 20 &&
-                    `Savings rate is ${analytics.savingsRates?.toFixed(
-                      1
-                    )}%, below the recommended 20%. `}
-                  {analytics.expenseToIncomeRatio > 75 &&
-                    `Expense-to-income ratio is high at ${analytics.expenseToIncomeRatio?.toFixed(
-                      1
-                    )}%. `}
-                  {analytics.spikes > 0 &&
-                    `${analytics.spikes} unusual expense spike(s) detected. `}
-                  {analytics.isIncreasing &&
-                    `Expenses have been rising consistently over the last 3 months. `}
-                  {analytics.incomeDropPercent > 10 &&
-                    `Income has dropped by ${analytics.incomeDropPercent?.toFixed(
-                      1
-                    )}% recently. `}
-                  {score < 5 &&
-                    analytics.deficitMonths === 0 &&
-                    analytics.savingsRates >= 20 &&
-                    `Overall finances look healthy — keep it up.`}
+                </div>
+
+                <div className='space-y-3'>
+                  {scoreExplanationItems.map((item, index) => (
+                    <div
+                      key={index}
+                      className='flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-bg-secondary px-3 py-3'
+                    >
+                      <div>
+                        <p className='text-sm font-medium text-text-primary'>
+                          {item.label}
+                        </p>
+                        <p className='text-text-secondary text-xs mt-1'>
+                          {item.description}
+                        </p>
+                      </div>
+                      <p className='text-text-primary text-sm font-semibold'>
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <p className='mt-4 text-xs text-text-secondary leading-relaxed'>
+                  {scoreExplanationNote}
                 </p>
               </div>
-            </div>
-          )}
+          </div>
 
           {/* ── Transactions section ── */}
           <div className='bg-bg-card border border-border rounded-xl'>
@@ -1078,7 +1200,7 @@ const page = () => {
             </div>
 
             {/* Table */}
-            <div className='overflow-x-auto max-h-96 overflow-y-auto'>
+            <div className='overflow-x-auto max-h-[32rem] overflow-y-auto'>
               {transactions.length === 0 ? (
                 <div className='flex items-center justify-center h-32'>
                   <p className='text-text-secondary text-sm'>
@@ -1086,8 +1208,8 @@ const page = () => {
                   </p>
                 </div>
               ) : (
-                <table className='w-full text-sm'>
-                  <thead className='sticky top-0 bg-bg-secondary'>
+                <table className='min-w-full table-fixed text-sm'>
+                  <thead className='sticky top-0 z-10 bg-bg-secondary/95 backdrop-blur-sm shadow-sm'>
                     <tr>
                       {[
                         'Date',
@@ -1112,13 +1234,13 @@ const page = () => {
                         key={index}
                         className='border-t border-border/50 hover:bg-bg-secondary/50 transition-colors'
                       >
-                        <td className='px-4 py-3 text-text-secondary text-xs'>
+                        <td className='px-4 py-3 text-text-secondary text-xs whitespace-nowrap'>
                           {new Date(t.date).toLocaleDateString()}
                         </td>
-                        <td className='px-4 py-3 text-text-primary text-xs max-w-48 truncate'>
+                        <td className='px-4 py-3 text-text-primary text-xs max-w-[12rem] truncate'>
                           {t.description}
                         </td>
-                        <td className='px-4 py-3'>
+                        <td className='px-4 py-3 whitespace-nowrap'>
                           <select
                             value={categoryOverride[t.id] || t.category}
                             onChange={e =>
@@ -1136,7 +1258,7 @@ const page = () => {
                             ))}
                           </select>
                         </td>
-                        <td className='px-4 py-3'>
+                        <td className='px-4 py-3 whitespace-nowrap'>
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full border
                   ${
@@ -1149,7 +1271,7 @@ const page = () => {
                           </span>
                         </td>
                         <td
-                          className={`px-4 py-3 text-sm font-medium ${
+                          className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
                             t.type === 'CREDIT' ? 'text-success' : 'text-danger'
                           }`}
                         >
@@ -1158,7 +1280,7 @@ const page = () => {
                         </td>
 
                         {/* ── Delete cell ── */}
-                        <td className='px-4 py-3'>
+                        <td className='px-4 py-3 whitespace-nowrap'>
                           {confirmDelete === t.id ? (
                             // Two-step confirm — shows inline after first click
                             <div className='flex items-center gap-2'>
@@ -1209,6 +1331,46 @@ const page = () => {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* ── Under the hood ── */}
+          <div className='bg-bg-card border border-border rounded-xl p-5'>
+            <p className='text-xs font-medium text-text-secondary uppercase tracking-widest mb-4'>
+              Under the hood
+            </p>
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+              {[
+                {
+                  step: '01',
+                  title: 'Transaction grouping',
+                  desc: 'Transactions are aggregated by category and type (credit/debit). Monthly summaries group by date to identify spending patterns and income trends.'
+                },
+                {
+                  step: '02',
+                  title: 'Anomaly detection',
+                  desc: 'Statistical outliers are identified when transactions deviate significantly from monthly averages. Flagged anomalies help catch unusual spending or income patterns.'
+                },
+                {
+                  step: '03',
+                  title: 'Score calculation',
+                  desc: 'FinGuard Score (out of 15) combines expense tracking compliance, spending volatility, anomaly count, and savings consistency. Higher scores indicate better financial discipline.'
+                }
+              ].map(item => (
+                <div key={item.step} className='flex gap-3'>
+                  <span className='text-accent font-mono text-sm mt-0.5 shrink-0'>
+                    {item.step}
+                  </span>
+                  <div>
+                    <p className='text-text-primary text-sm font-medium'>
+                      {item.title}
+                    </p>
+                    <p className='text-text-secondary text-xs mt-1 leading-relaxed'>
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* ── Data quality ── */}

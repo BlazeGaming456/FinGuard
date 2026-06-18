@@ -18,10 +18,12 @@ import PageHeader from '@/components/PageHeader'
 
 const tooltipStyle = {
   backgroundColor: '#1e2130',
-  border: '1px solid #2a2d3e',
+  border: '1px solid #6366f1',
   borderRadius: '8px',
   color: '#ffffff',
-  fontSize: '12px'
+  fontSize: '13px',
+  padding: '8px',
+  fontWeight: '500'
 }
 
 const severityConfig = {
@@ -66,6 +68,15 @@ export default function ForecastPage () {
   useEffect(() => {
     fetchForecast()
   }, [horizon])
+
+  const forecastHasInsufficientData = data && (
+    data.expense?.status === 'insufficient data' ||
+    data.income?.status === 'insufficient data'
+  )
+
+  const forecastInsufficientMessage =
+    data?.expense?.message || data?.income?.message ||
+    'Insufficient transaction history to build a forecast. Upload at least 6 months of data.'
 
   // Build chart data — merge historical + forecast into one series
   const buildChartData = fc => {
@@ -113,7 +124,7 @@ export default function ForecastPage () {
     <div className='space-y-6'>
       <PageHeader
         title='Prophet Forecast'
-        subtitle='Time-series forecasting using Facebook Prophet'
+        subtitle='Phase 4: Time-series forecasting to predict your income and expenses'
         badge='Phase 4'
       >
         <label className='text-text-secondary text-xs'>Horizon</label>
@@ -159,7 +170,18 @@ export default function ForecastPage () {
         </div>
       )}
 
-      {data && !loading && (
+      {data && !loading && forecastHasInsufficientData && (
+        <div className='bg-bg-card border border-warning/30 rounded-xl p-6'>
+          <p className='text-warning text-sm font-semibold mb-2'>
+            Insufficient data to generate a forecast
+          </p>
+          <p className='text-text-secondary text-xs leading-relaxed'>
+            {forecastInsufficientMessage}
+          </p>
+        </div>
+      )}
+
+      {data && !loading && !forecastHasInsufficientData && (
         <>
           {/* ── Stat cards ── */}
           <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
@@ -251,12 +273,12 @@ export default function ForecastPage () {
                 <CartesianGrid strokeDasharray='3 3' stroke='#2a2d3e' />
                 <XAxis
                   dataKey='month'
-                  tick={{ fill: '#8b92a5', fontSize: 11 }}
+                  tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: '#8b92a5', fontSize: 11 }}
+                  tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
@@ -268,7 +290,7 @@ export default function ForecastPage () {
                     name
                   ]}
                 />
-                <Legend wrapperStyle={{ color: '#8b92a5', fontSize: '12px' }} />
+                <Legend wrapperStyle={{ color: '#b0b8c5', fontSize: '13px', fontWeight: 500 }} />
 
                 {/* Confidence band */}
                 <Area
@@ -417,7 +439,7 @@ export default function ForecastPage () {
                                   width: `${Math.min(
                                     (width / 100000) * 100,
                                     100
-                                  )}%`
+                                  ).toFixed(2)}%`
                                 }}
                               />
                             </div>

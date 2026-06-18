@@ -102,7 +102,7 @@ const page = () => {
     <div className='space-y-6'>
       <PageHeader
         title='Upload Data'
-        subtitle='Upload your data through PDF or CSV to analyze your finances'
+        subtitle='Phase 1: Upload your bank statements through PDF or CSV to analyze your finances'
         badge='Data'
       />
 
@@ -255,47 +255,47 @@ const page = () => {
 
           <div className='bg-bg-card border border-border rounded-xl overflow-hidden'>
             <div className='overflow-x-auto'>
-              <table className='w-full text-sm'>
-                <thead>
-                  <tr className='border-b border-border'>
-                    {Object.keys(parsedData[0]).map((key, index) => (
-                      <th
-                        key={index}
-                        className='px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider'
-                      >
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedData.slice(0, 10).map((row, index) => (
-                    <tr
-                      key={index}
-                      className='border-b border-border/50 hover:bg-bg-secondary/50 transition-colors'
-                    >
-                      {Object.values(row).map((value, idx) => (
-                        <td
-                          key={idx}
-                          className='px-4 py-3 text-text-secondary text-xs'
+              <div className='max-h-96 overflow-y-auto'>
+                <table className='min-w-full text-sm'>
+                  <thead>
+                    <tr className='border-b border-border'>
+                      {Object.keys(parsedData[0]).map((key, index) => (
+                        <th
+                          key={index}
+                          className='px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider'
                         >
-                          {String(value).length > 30
-                            ? String(value).slice(0, 30) + '...'
-                            : value}
-                        </td>
+                          {key}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {parsedData.length > 10 && (
-              <div className='px-4 py-3 border-t border-border'>
-                <p className='text-text-secondary text-xs'>
-                  Showing 10 of {parsedData.length} transactions
-                </p>
+                  </thead>
+                  <tbody>
+                    {parsedData.map((row, index) => (
+                      <tr
+                        key={index}
+                        className='border-b border-border/50 hover:bg-bg-secondary/50 transition-colors'
+                      >
+                        {Object.values(row).map((value, idx) => (
+                          <td
+                            key={idx}
+                            className='px-4 py-3 text-text-secondary text-xs'
+                          >
+                            {String(value).length > 30
+                              ? String(value).slice(0, 30) + '...'
+                              : value}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </div>
+            <div className='px-4 py-3 border-t border-border'>
+              <p className='text-text-secondary text-xs'>
+                Showing all {parsedData.length} transactions
+              </p>
+            </div>
           </div>
         </div>
       )}

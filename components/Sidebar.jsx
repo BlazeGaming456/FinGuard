@@ -9,8 +9,8 @@ const navItems = [
   {
     section: 'General',
     links: [
-      { label: 'Dashboard', href: '/dashboard', icon: '▦' },
-      { label: 'Upload data', href: '/upload', icon: '↑' }
+      { label: 'Upload data', href: '/upload', icon: '↑' },
+      { label: 'Dashboard', href: '/dashboard', icon: '▦' }
     ]
   },
   {
@@ -55,7 +55,11 @@ export default function Sidebar () {
                             : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03] border border-transparent'
                         }`}
                     >
-                      <span className={`text-base ${isActive ? 'text-accent-light' : ''}`}>
+                      <span
+                        className={`text-base ${
+                          isActive ? 'text-accent-light' : ''
+                        }`}
+                      >
                         {link.icon}
                       </span>
                       {link.label}

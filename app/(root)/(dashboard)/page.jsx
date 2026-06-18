@@ -54,9 +54,10 @@ const page = () => {
         .reduce((acc, t) => acc + t.amount, 0)
       const balance = totalIncome - totalExpense
       const rawCategoryWise = data.reduce((acc, t) => {
-        if (t.category === 'Income') return acc
-        if (!acc[t.category]) acc[t.category] = 0
-        acc[t.category] += t.amount
+        if (t.type !== 'DEBIT') return acc
+        const category = String(t.category || 'Uncategorized').trim() || 'Uncategorized'
+        if (!acc[category]) acc[category] = 0
+        acc[category] += t.amount
         return acc
       }, {})
       const categoryWise = Object.entries(rawCategoryWise).map(
@@ -98,13 +99,13 @@ const page = () => {
         else acc[month].expense += t.amount
         return acc
       }, {})
-      const monthlyDataObject = Object.entries(monthlyData).map(
-        ([key, value]) => ({
+      const monthlyDataObject = Object.entries(monthlyData)
+        .map(([key, value]) => ({
           month: key,
           income: value.income,
           expense: value.expense
-        })
-      )
+        }))
+        .sort((a, b) => new Date(a.month) - new Date(b.month))
       const transactionCount = data.length
       const maxExpenseCategory = categoryWise.reduce(
         (max, category) => (max.value > category.value ? max : category),
@@ -117,7 +118,8 @@ const page = () => {
         },
         { amount: 0 }
       )
-      const averageDailyExpense = totalExpense / monthlyExpenseData.length
+      const averageDailyExpense =
+        monthlyExpenseData.length > 0 ? totalExpense / monthlyExpenseData.length : 0
       setStats({
         totalIncome,
         totalExpense,
@@ -137,6 +139,7 @@ const page = () => {
   const advisory = () => {
     if (filteredTransactions.length > 0) {
       const monthlyDataObject = stats.monthlyDataObject
+      if (!monthlyDataObject?.length) return
       let curScore = 0
       let deficitMonths = 0
       for (let i = monthlyDataObject.length - 1; i >= 0; i--) {
@@ -146,16 +149,13 @@ const page = () => {
       }
       if (deficitMonths >= 3) curScore += 3
       else if (deficitMonths > 0) curScore += 1
+      // Calculate overall savings rate correctly: total savings / total income
+      const totalIncome = stats.totalIncome || 0
+      const totalExpense = stats.totalExpense || 0
       let savingsRates = 0
-      let n = 0
-      for (let i = monthlyDataObject.length - 1; i >= 0; i--) {
-        let val =
-          (monthlyDataObject[i].income - monthlyDataObject[i].expense) /
-          monthlyDataObject[i].income
-        n++
-        savingsRates += val
+      if (totalIncome > 0) {
+        savingsRates = ((totalIncome - totalExpense) / totalIncome) * 100
       }
-      savingsRates = (savingsRates * 100) / n
       if (savingsRates < 5) curScore += 3
       else if (savingsRates < 10) curScore += 1
       const emiRate = 0
@@ -183,16 +183,17 @@ const page = () => {
       }
       if (isIncreasing) curScore += 3
       let incomeDropPercent = 0
-      if (monthlyDataObject.length >= 3) {
-        const last3Months = monthlyDataObject.slice(-3)
-        let avgPercentDrop = 0
-        for (let i = 0; i < last3Months.length - 2; i++) {
-          let percentDrop =
-            (last3Months[i].income - last3Months[i + 1].income) /
-            last3Months[i].income
-          avgPercentDrop += percentDrop
+      let incomeDropContext = ''
+      if (monthlyDataObject.length >= 2) {
+        const lastMonth = monthlyDataObject[monthlyDataObject.length - 1]
+        const prevMonth = monthlyDataObject[monthlyDataObject.length - 2]
+        if (prevMonth.income > 0) {
+          incomeDropPercent =
+            ((prevMonth.income - lastMonth.income) / prevMonth.income) * 100
+          if (incomeDropPercent > 10) {
+            incomeDropContext = `${prevMonth.month} (₹${prevMonth.income.toLocaleString()}) → ${lastMonth.month} (₹${lastMonth.income.toLocaleString()})`
+          }
         }
-        incomeDropPercent = (avgPercentDrop * 100) / (last3Months.length - 2)
       }
       if (incomeDropPercent > 20) curScore += 3
       else if (incomeDropPercent > 10) curScore += 1
@@ -237,7 +238,9 @@ const page = () => {
       ).length
       const uniqueCategories = [
         ...new Set(transactions.map(t => t.category))
-      ].filter(c => c != 'Income' || c != 'Food' || c != 'Entertainment')
+      ].filter(
+        c => c && c !== 'Income' && c !== 'Food' && c !== 'Entertainment'
+      )
       setDataQuality({
         totalTransactions,
         dateRange: `${firstDate} → ${lastDate}`,
@@ -253,7 +256,8 @@ const page = () => {
         spikes,
         expenseToIncomeRatio,
         isIncreasing,
-        incomeDropPercent
+        incomeDropPercent,
+        incomeDropContext
       })
     }
   }
@@ -557,6 +561,48 @@ const page = () => {
       ? 'bg-warning/10 border-warning/20'
       : 'bg-danger/10 border-danger/20'
 
+  const scoreExplanationItems = [
+    {
+      label: 'Savings Rate',
+      value: `${analytics.savingsRates?.toFixed(1) ?? 0}%`,
+      note:
+        analytics.savingsRates >= 20
+          ? 'On track with suggested savings goals.'
+          : 'Below the recommended 20% savings rate.'
+    },
+    {
+      label: 'Expense Ratio',
+      value: `${analytics.expenseToIncomeRatio?.toFixed(1) ?? 0}%`,
+      note:
+        analytics.expenseToIncomeRatio <= 75
+          ? 'Healthy expense-to-income balance.'
+          : 'Expenses are high relative to income.'
+    },
+    {
+      label: 'Deficit Months',
+      value: analytics.deficitMonths ?? 0,
+      note:
+        analytics.deficitMonths === 0
+          ? 'No deficit months detected.'
+          : 'Monitor your monthly cash flow closely.'
+    },
+    {
+      label: 'Income Change',
+      value: `${analytics.incomeDropPercent?.toFixed(1) ?? 0}%`,
+      note:
+        analytics.incomeDropPercent <= 10
+          ? 'Income is relatively stable.'
+          : 'Recent income decline is increasing risk.'
+    }
+  ]
+
+  const scoreExplanationNote =
+    score >= 10
+      ? 'Your score indicates significant financial stress. Focus on reducing expenses, boosting savings, and stabilizing income.'
+      : score >= 5
+      ? 'You have some risk signals. Increase savings and keep a close eye on spending patterns.'
+      : 'Your financial health looks strong. Keep tracking your progress month to month.'
+
   const advisoryFlags =
     Object.keys(analytics).length > 0
       ? [
@@ -593,7 +639,7 @@ const page = () => {
             label: 'Income Drop',
             desc: `Income dropped by ${analytics.incomeDropPercent?.toFixed(
               1
-            )}% recently.`,
+            )}% recently. ${analytics.incomeDropContext}`,
             severity: 'high'
           }
         ].filter(Boolean)
@@ -908,45 +954,91 @@ const page = () => {
                   {riskLabel} · Score {score}
                 </span>
               </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                {advisoryFlags.map((flag, i) => (
-                  <div
-                    key={i}
-                    className={`flex gap-3 p-3 rounded-lg border
-                      ${
-                        flag.severity === 'high'
-                          ? 'bg-danger/5 border-danger/20'
-                          : 'bg-warning/5 border-warning/20'
-                      }`}
-                  >
-                    <span
-                      className={
-                        flag.severity === 'high'
-                          ? 'text-danger'
-                          : 'text-warning'
-                      }
-                    >
-                      ⚠
-                    </span>
-                    <div>
-                      <p
-                        className={`text-sm font-medium ${
-                          flag.severity === 'high'
-                            ? 'text-danger'
-                            : 'text-warning'
-                        }`}
+              <div className='grid gap-6 lg:grid-cols-[1.3fr_0.95fr]'>
+                <div className='space-y-3'>
+                  <div className='grid gap-3 md:grid-cols-2'>
+                    {advisoryFlags.map((flag, i) => (
+                      <div
+                        key={i}
+                        className={`flex gap-3 p-3 rounded-lg border
+                          ${
+                            flag.severity === 'high'
+                              ? 'bg-danger/5 border-danger/20'
+                              : 'bg-warning/5 border-warning/20'
+                          }`}
                       >
-                        {flag.label}
+                        <span
+                          className={
+                            flag.severity === 'high'
+                              ? 'text-danger'
+                              : 'text-warning'
+                          }
+                        >
+                          ⚠
+                        </span>
+                        <div>
+                          <p
+                            className={`text-sm font-medium ${
+                              flag.severity === 'high'
+                                ? 'text-danger'
+                                : 'text-warning'
+                            }`}
+                          >
+                            {flag.label}
+                          </p>
+                          <p className='text-text-secondary text-xs mt-0.5'>
+                            {flag.desc}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className='rounded-3xl border border-border/70 bg-gradient-to-br from-slate-950/70 to-slate-900/85 p-4 shadow-[0_16px_40px_rgba(15,23,42,0.18)]'>
+                  <div className='flex items-start justify-between gap-3 mb-4'>
+                    <div>
+                      <p className='text-text-primary font-semibold text-sm'>
+                        FinGuard score explanation
                       </p>
-                      <p className='text-text-secondary text-xs mt-0.5'>
-                        {flag.desc}
+                      <p className='text-text-secondary text-xs mt-1'>
+                        Key factors that influence your current risk score.
                       </p>
                     </div>
+                    <span
+                      className={`text-xs font-semibold px-3 py-1 rounded-full border ${riskBg} ${riskColor}`}
+                    >
+                      {riskLabel}
+                    </span>
                   </div>
-                ))}
+
+                  <div className='space-y-3'>
+                    {scoreExplanationItems.map((item, i) => (
+                      <div
+                        key={i}
+                        className='flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-bg-secondary px-3 py-3'
+                      >
+                        <div>
+                          <p className='text-sm font-medium text-text-primary'>
+                            {item.label}
+                          </p>
+                          <p className='text-text-secondary text-xs mt-1'>
+                            {item.note}
+                          </p>
+                        </div>
+                        <p className='text-text-primary text-sm font-semibold'>
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className='mt-4 text-xs text-text-secondary leading-relaxed'>
+                    {scoreExplanationNote}
+                  </p>
+                </div>
               </div>
 
-              {/* Financial summary sentence */}
               <div className='mt-4 p-3 bg-bg-secondary rounded-lg border border-border'>
                 <p className='text-text-secondary text-xs leading-relaxed'>
                   <span className='text-text-primary font-medium'>
