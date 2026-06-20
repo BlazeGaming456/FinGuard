@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -28,6 +29,7 @@ const navItems = [
 
 export default function Sidebar () {
   const pathname = usePathname()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   return (
     <aside className='w-60 h-screen glass-sidebar flex flex-col shrink-0 relative z-20'>
@@ -74,11 +76,15 @@ export default function Sidebar () {
 
       <div className='p-4 border-t border-border'>
         <button
-          className='flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-secondary hover:text-danger hover:bg-danger/5 w-full border border-transparent hover:border-danger/20 cursor-pointer'
-          onClick={() => signOut({ callbackUrl: '/' })}
+          className='flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-secondary hover:text-danger hover:bg-danger/5 w-full border border-transparent hover:border-danger/20 cursor-pointer disabled:opacity-50'
+          disabled={isLoggingOut}
+          onClick={() => {
+            setIsLoggingOut(true)
+            signOut({ callbackUrl: '/' })
+          }}
         >
           <span>→</span>
-          Log out
+          {isLoggingOut ? 'Logging out...' : 'Log out'}
         </button>
       </div>
     </aside>

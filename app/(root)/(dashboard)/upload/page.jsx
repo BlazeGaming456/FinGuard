@@ -102,8 +102,8 @@ const page = () => {
     <div className='space-y-6'>
       <PageHeader
         title='Upload Data'
-        subtitle='Phase 1: Upload your bank statements through PDF or CSV to analyze your finances'
-        badge='Data'
+        subtitle='Upload your bank statements through PDF or CSV to analyze your finances'
+        badge='Phase 1'
       />
 
       {/* Upload area */}

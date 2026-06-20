@@ -1,10 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import ParticleBackground from "@/components/ParticleBackground";
 import Logo from "@/components/Logo";
 
 export default function HomePage() {
+  const { data: session, status } = useSession();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const signedIn = status === "authenticated";
+  const rawName = session?.user?.name || session?.user?.email || "Account";
+  const displayName =
+    rawName.length > 16 ? `${rawName.slice(0, 16)}...` : rawName;
+  const initials = rawName.trim().charAt(0).toUpperCase() || "F";
+
   const features = [
     {
       icon: "▲",
@@ -46,13 +56,53 @@ export default function HomePage() {
 
       <nav className="glass-nav fixed top-0 left-0 right-0 z-[100] px-6 sm:px-12 py-5 flex items-center justify-between">
         <Logo href="/" />
-        <div className="flex gap-3">
-          <Link href="/login" className="btn-ghost text-sm py-2">
-            Log in
-          </Link>
-          <Link href="/signup" className="btn-primary text-sm py-2 no-underline">
-            Get started
-          </Link>
+        <div className="flex items-center gap-3">
+          {signedIn ? (
+            <div className="relative inline-flex items-center group">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-bg-card px-3 py-2 text-sm text-text-primary transition hover:border-accent"
+              >
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent to-violet-500 text-sm font-semibold text-white">
+                  {initials}
+                </span>
+                <span className="max-w-[120px] truncate text-sm">
+                  {displayName}
+                </span>
+              </button>
+              <div className="invisible absolute right-0 top-full mt-3 w-44 rounded-2xl border border-border bg-bg-card p-2 shadow-xl opacity-0 transition duration-200 group-hover:visible group-hover:opacity-100 before:absolute before:-top-3 before:left-0 before:h-3 before:w-full">
+                <Link
+                  href="/dashboard"
+                  className="block rounded-xl px-3 py-2 text-sm text-text-primary hover:bg-bg-secondary cursor-pointer"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  disabled={isLoggingOut}
+                  onClick={() => {
+                    setIsLoggingOut(true);
+                    signOut({ callbackUrl: "/" });
+                  }}
+                  className="w-full text-left rounded-xl px-3 py-2 text-sm text-text-secondary hover:bg-bg-secondary cursor-pointer disabled:opacity-50"
+                >
+                  {isLoggingOut ? "Logging out..." : "Log out"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Link href="/login" className="btn-ghost text-sm py-2">
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="btn-primary text-sm py-2 no-underline"
+              >
+                Get started
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -63,20 +113,27 @@ export default function HomePage() {
         </div>
 
         <h1 className="text-[clamp(42px,7vw,88px)] font-bold tracking-tight leading-[1.05] mb-6 max-w-[900px]">
-          Your finances,{" "}
-          <span className="gradient-text">intelligently</span>{" "}
+          Your finances, <span className="gradient-text">intelligently</span>{" "}
           predicted.
         </h1>
 
         <p className="text-lg text-text-secondary max-w-xl leading-relaxed mb-12">
-          Upload your bank statements and get rule-based advisories, Prophet-powered forecasts, and Monte Carlo risk simulations — all in one dashboard.
+          Upload your bank statements and get rule-based advisories,
+          Prophet-powered forecasts, and Monte Carlo risk simulations — all in
+          one dashboard.
         </p>
 
         <div className="flex gap-3 flex-wrap justify-center">
-          <Link href="/dashboard" className="btn-primary text-[15px] px-8 py-3.5 no-underline">
+          <Link
+            href="/dashboard"
+            className="btn-primary text-[15px] px-8 py-3.5 no-underline"
+          >
             Go to Dashboard →
           </Link>
-          <Link href="/signup" className="btn-ghost text-[15px] px-8 py-3.5 no-underline">
+          <Link
+            href="/signup"
+            className="btn-ghost text-[15px] px-8 py-3.5 no-underline"
+          >
             Create account
           </Link>
         </div>
@@ -101,7 +158,9 @@ export default function HomePage() {
 
       <section className="relative z-10 px-6 sm:px-12 py-20 max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <p className="text-xs text-accent uppercase tracking-[0.1em] mb-3">What&apos;s inside</p>
+          <p className="text-xs text-accent uppercase tracking-[0.1em] mb-3">
+            What&apos;s inside
+          </p>
           <h2 className="text-[clamp(28px,4vw,48px)] font-bold tracking-tight leading-tight">
             Four layers of financial intelligence
           </h2>
@@ -116,18 +175,31 @@ export default function HomePage() {
             >
               <div
                 className="absolute top-0 right-0 w-28 h-28 pointer-events-none"
-                style={{ background: `radial-gradient(circle at top right, ${f.color}18, transparent 70%)` }}
+                style={{
+                  background: `radial-gradient(circle at top right, ${f.color}18, transparent 70%)`,
+                }}
               />
-              <div className="text-2xl mb-4" style={{ color: f.color }}>{f.icon}</div>
+              <div className="text-2xl mb-4" style={{ color: f.color }}>
+                {f.icon}
+              </div>
               <div
                 className="inline-block text-[10px] px-2 py-0.5 rounded uppercase tracking-widest mb-3"
                 style={{ background: f.color + "22", color: f.color }}
               >
                 {f.tag}
               </div>
-              <h3 className="text-lg font-semibold tracking-tight mb-1.5">{f.title}</h3>
-              <p className="text-xs font-medium mb-3" style={{ color: f.color }}>{f.subtitle}</p>
-              <p className="text-sm text-text-secondary leading-relaxed">{f.desc}</p>
+              <h3 className="text-lg font-semibold tracking-tight mb-1.5">
+                {f.title}
+              </h3>
+              <p
+                className="text-xs font-medium mb-3"
+                style={{ color: f.color }}
+              >
+                {f.subtitle}
+              </p>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                {f.desc}
+              </p>
             </div>
           ))}
         </div>
@@ -135,11 +207,17 @@ export default function HomePage() {
 
       <section className="relative z-10 px-6 py-16 pb-24 text-center">
         <div className="max-w-xl mx-auto px-10 py-14 rounded-3xl border border-accent/20 bg-accent/5">
-          <h2 className="text-4xl font-bold tracking-tight mb-4">Ready to take control?</h2>
+          <h2 className="text-4xl font-bold tracking-tight mb-4">
+            Ready to take control?
+          </h2>
           <p className="text-text-secondary mb-8 leading-relaxed">
-            Upload your first CSV and get your financial risk profile in under 60 seconds.
+            Upload your first CSV and get your financial risk profile in under
+            60 seconds.
           </p>
-          <Link href="/signup" className="btn-primary text-[15px] px-9 py-3.5 no-underline">
+          <Link
+            href="/signup"
+            className="btn-primary text-[15px] px-9 py-3.5 no-underline"
+          >
             Start for free →
           </Link>
         </div>

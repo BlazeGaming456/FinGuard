@@ -10,12 +10,15 @@ export const authConfig: NextAuthConfig = {
     }),
     Credentials({ credentials: {} })
   ],
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 3600 },
   callbacks: {
-    async jwt ({ token, user }) {
+    async jwt ({ token, user, account }) {
       if (user) {
         token.id = user.id
         token.name = user.name
+      }
+      if (account) {
+        token.provider = account.provider
       }
       return token
     },
@@ -23,6 +26,7 @@ export const authConfig: NextAuthConfig = {
       if (token) {
         session.user.id = token.id as string
         session.user.name = token.name as string
+        session.user.provider = token.provider as string
       }
       return session
     },

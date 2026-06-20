@@ -21,9 +21,9 @@ const tooltipStyle = {
   border: '1px solid #6366f1',
   borderRadius: '8px',
   color: '#ffffff',
-  fontSize: '13px',
-  padding: '8px',
-  fontWeight: '500'
+  fontSize: '15px',
+  padding: '10px',
+  fontWeight: '600'
 }
 
 const severityConfig = {
@@ -69,13 +69,21 @@ export default function ForecastPage () {
     fetchForecast()
   }, [horizon])
 
-  const forecastHasInsufficientData = data && (
-    data.expense?.status === 'insufficient data' ||
-    data.income?.status === 'insufficient data'
-  )
+  const expenseMonths = data?.expense?.historical?.length ?? 0
+  const incomeMonths = data?.income?.historical?.length ?? 0
+  const forecastHasLowHistory =
+    data &&
+    ((expenseMonths > 0 && expenseMonths < 6) ||
+      (incomeMonths > 0 && incomeMonths < 6))
+
+  const forecastHasInsufficientData =
+    data &&
+    (data.expense?.status === 'insufficient data' ||
+      data.income?.status === 'insufficient data')
 
   const forecastInsufficientMessage =
-    data?.expense?.message || data?.income?.message ||
+    data?.expense?.message ||
+    data?.income?.message ||
     'Insufficient transaction history to build a forecast. Upload at least 6 months of data.'
 
   // Build chart data — merge historical + forecast into one series
@@ -167,6 +175,18 @@ export default function ForecastPage () {
               Training Prophet model...
             </p>
           </div>
+        </div>
+      )}
+
+      {data && !loading && forecastHasLowHistory && (
+        <div className='bg-warning/5 border border-warning/20 rounded-xl p-6'>
+          <p className='text-warning text-sm font-semibold mb-2'>
+            Forecast accuracy may be low
+          </p>
+          <p className='text-text-secondary text-xs leading-relaxed'>
+            Your transaction history covers less than 6 months of data, so
+            predictions may be less reliable.
+          </p>
         </div>
       )}
 
@@ -273,24 +293,31 @@ export default function ForecastPage () {
                 <CartesianGrid strokeDasharray='3 3' stroke='#2a2d3e' />
                 <XAxis
                   dataKey='month'
-                  tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
+                  tick={{ fill: '#e2e8f0', fontSize: 14, fontWeight: 600 }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }}
+                  tick={{ fill: '#e2e8f0', fontSize: 14, fontWeight: 600 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
+                  itemStyle={{ color: '#e2e8f0', fontWeight: 500 }}
                   formatter={(value, name) => [
                     `₹${value?.toLocaleString()}`,
                     name
                   ]}
                 />
-                <Legend wrapperStyle={{ color: '#b0b8c5', fontSize: '13px', fontWeight: 500 }} />
+                <Legend
+                  wrapperStyle={{
+                    color: '#e2e8f0',
+                    fontSize: '14px',
+                    fontWeight: 600
+                  }}
+                />
 
                 {/* Confidence band */}
                 <Area
@@ -346,8 +373,9 @@ export default function ForecastPage () {
                     strokeDasharray='6 3'
                     label={{
                       value: 'Forecast →',
-                      fill: '#8b92a5',
-                      fontSize: 10
+                      fill: '#e2e8f0',
+                      fontSize: 12,
+                      fontWeight: 600
                     }}
                   />
                 )}

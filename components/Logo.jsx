@@ -1,21 +1,24 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Logo ({ size = 'md', href, className = '' }) {
   const sizes = {
-    sm: { box: 'w-6 h-6 text-[11px] rounded-md', text: 'text-sm' },
-    md: { box: 'w-7 h-7 text-[13px] rounded-lg', text: 'text-base' },
-    lg: { box: 'w-8 h-8 text-sm rounded-lg', text: 'text-lg' }
+    sm: { box: 24, text: 'text-sm' },
+    md: { box: 28, text: 'text-base' },
+    lg: { box: 32, text: 'text-lg' }
   }
   const s = sizes[size] || sizes.md
 
   const content = (
     <div className={`flex items-center gap-2.5 ${className}`}>
-      <div
-        className={`${s.box} bg-gradient-to-br from-accent to-violet-500 flex items-center justify-center font-bold text-white shrink-0`}
-      >
-        F
-      </div>
-      <span className={`${s.text} font-semibold tracking-tight text-text-primary`}>
+      <Image 
+        src="/logo.png" 
+        alt="FinGuard Logo" 
+        width={s.box} 
+        height={s.box} 
+        className="shrink-0 object-contain"
+      />
+      <span className={`${s.text} font-bold tracking-tight bg-gradient-to-r from-accent to-pink-500 bg-clip-text text-transparent`}>
         FinGuard
       </span>
     </div>

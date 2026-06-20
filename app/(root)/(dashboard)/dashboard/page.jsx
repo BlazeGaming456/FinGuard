@@ -66,7 +66,8 @@ const page = () => {
       const balance = totalIncome - totalExpense
       const rawCategoryWise = data.reduce((acc, t) => {
         if (t.type !== 'DEBIT') return acc
-        const category = String(t.category || 'Uncategorized').trim() || 'Uncategorized'
+        const category =
+          String(t.category || 'Uncategorized').trim() || 'Uncategorized'
         if (!acc[category]) acc[category] = 0
         acc[category] += t.amount
         return acc
@@ -130,7 +131,9 @@ const page = () => {
         { amount: 0 }
       )
       const averageDailyExpense =
-        monthlyExpenseData.length > 0 ? totalExpense / monthlyExpenseData.length : 0
+        monthlyExpenseData.length > 0
+          ? totalExpense / monthlyExpenseData.length
+          : 0
       setStats({
         totalIncome,
         totalExpense,
@@ -163,9 +166,7 @@ const page = () => {
       const totalIncome = stats.totalIncome || 0
       const totalExpense = stats.totalExpense || 0
       const savingsRates =
-        totalIncome > 0
-          ? ((totalIncome - totalExpense) / totalIncome) * 100
-          : 0
+        totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0
       if (savingsRates < 5) curScore += 3
       else if (savingsRates < 10) curScore += 1
       const emiRate = 0
@@ -204,7 +205,11 @@ const page = () => {
           incomeDropPercent =
             ((prevMonth.income - lastMonth.income) / prevMonth.income) * 100
           if (incomeDropPercent > 10) {
-            incomeDropContext = `${prevMonth.month} (₹${prevMonth.income.toLocaleString()}) → ${lastMonth.month} (₹${lastMonth.income.toLocaleString()})`
+            incomeDropContext = `${
+              prevMonth.month
+            } (₹${prevMonth.income.toLocaleString()}) → ${
+              lastMonth.month
+            } (₹${lastMonth.income.toLocaleString()})`
           }
         }
       }
@@ -726,15 +731,14 @@ const page = () => {
     <div className='space-y-6'>
       <PageHeader
         title='Dashboard'
-        subtitle={dataQuality.dateRange
-          ? `Phase 2: Your financial overview · ${dataQuality.dateRange}`
-          : 'Phase 2: Your financial overview'}
-        badge='Overview'
+        subtitle={
+          dataQuality.dateRange
+            ? `Phase 2: Your financial overview · ${dataQuality.dateRange}`
+            : 'Phase 2: Your financial overview'
+        }
+        badge='Phase 2'
       >
-        <button
-          onClick={exportPDF}
-          className='btn-ghost text-sm'
-        >
+        <button onClick={exportPDF} className='btn-ghost text-sm'>
           ↓ Export PDF
         </button>
       </PageHeader>
@@ -749,9 +753,18 @@ const page = () => {
       ) : transactions.length === 0 ? (
         <div className='flex items-center justify-center h-64'>
           <div className='flex flex-col items-center gap-4'>
-            <p className='text-text-primary text-lg font-medium'>No transactions found</p>
-            <p className='text-text-secondary text-sm'>Please upload data to get started.</p>
-            <Link href={'/upload'} className='px-4 py-2 bg-accent text-white rounded'>Upload data</Link>
+            <p className='text-text-primary text-lg font-medium'>
+              No transactions found
+            </p>
+            <p className='text-text-secondary text-sm'>
+              Please upload data to get started.
+            </p>
+            <Link
+              href={'/upload'}
+              className='px-4 py-2 bg-accent text-white rounded'
+            >
+              Upload data
+            </Link>
           </div>
         </div>
       ) : (
@@ -795,7 +808,9 @@ const page = () => {
             ].map((card, i) => (
               <div
                 key={i}
-                className={`bg-bg-card border ${card.border} rounded-xl p-4 transition-all duration-250 ${
+                className={`bg-bg-card border ${
+                  card.border
+                } rounded-xl p-4 transition-all duration-250 ${
                   card.label === 'FinGuard Score'
                     ? 'hover:shadow-[0_0_0_1px_rgba(99,102,241,0.3),0_8px_32px_rgba(99,102,241,0.16)]'
                     : ''
@@ -876,7 +891,11 @@ const page = () => {
                     isAnimationActive
                   />
                   <Legend
-                    wrapperStyle={{ color: '#b0b8c5', fontSize: '13px', fontWeight: 500 }}
+                    wrapperStyle={{
+                      color: '#b0b8c5',
+                      fontSize: '13px',
+                      fontWeight: 500
+                    }}
                   />
                 </BarChart>
               )}
@@ -917,7 +936,11 @@ const page = () => {
                     isAnimationActive
                   />
                   <Legend
-                    wrapperStyle={{ color: '#b0b8c5', fontSize: '13px', fontWeight: 500 }}
+                    wrapperStyle={{
+                      color: '#b0b8c5',
+                      fontSize: '13px',
+                      fontWeight: 500
+                    }}
                   />
                 </LineChart>
               )}
@@ -1022,137 +1045,138 @@ const page = () => {
           {/* ── Advisory flags + score explanation (stacked full-width) ── */}
           <div className='space-y-6'>
             <div className='bg-bg-card border border-border rounded-xl p-5 w-full'>
-                <div className='flex items-center gap-2 mb-4'>
-                  <p className='text-text-primary font-medium text-sm'>
-                    Advisory Flags
-                  </p>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full border ${riskBg} ${riskColor}`}
-                  >
-                    {riskLabel} · Score {score}
-                  </span>
-                </div>
+              <div className='flex items-center gap-2 mb-4'>
+                <p className='text-text-primary font-medium text-sm'>
+                  Advisory Flags
+                </p>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full border ${riskBg} ${riskColor}`}
+                >
+                  {riskLabel} · Score {score}
+                </span>
+              </div>
 
-                {advisoryFlags.length > 0 ? (
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                    {advisoryFlags.map((flag, i) => (
-                      <div
-                        key={i}
-                        className={`flex gap-3 p-3 rounded-lg border
+              {advisoryFlags.length > 0 ? (
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                  {advisoryFlags.map((flag, i) => (
+                    <div
+                      key={i}
+                      className={`flex gap-3 p-3 rounded-lg border
                           ${
                             flag.severity === 'high'
                               ? 'bg-danger/5 border-danger/20'
                               : 'bg-warning/5 border-warning/20'
                           }`}
+                    >
+                      <span
+                        className={
+                          flag.severity === 'high'
+                            ? 'text-danger'
+                            : 'text-warning'
+                        }
                       >
-                        <span
-                          className={
+                        ⚠
+                      </span>
+                      <div>
+                        <p
+                          className={`text-sm font-medium ${
                             flag.severity === 'high'
                               ? 'text-danger'
                               : 'text-warning'
-                          }
+                          }`}
                         >
-                          ⚠
-                        </span>
-                        <div>
-                          <p
-                            className={`text-sm font-medium ${
-                              flag.severity === 'high'
-                                ? 'text-danger'
-                                : 'text-warning'
-                            }`}
-                          >
-                            {flag.label}
-                          </p>
-                          <p className='text-text-secondary text-xs mt-0.5'>
-                            {flag.desc}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className='rounded-2xl border border-border/70 bg-bg-secondary p-4 text-text-secondary text-sm'>
-                    No advisory flags detected. Your score is still based on cash flow, savings, and expense behavior.
-                  </div>
-                )}
-
-                <div className='mt-4 p-3 bg-bg-secondary rounded-lg border border-border'>
-                  <p className='text-text-secondary text-xs leading-relaxed'>
-                    <span className='text-text-primary font-medium'>
-                      Summary —{' '}
-                    </span>
-                    You are currently in a{' '}
-                    <span className={riskColor}>{riskLabel.toLowerCase()}</span>{' '}
-                    zone.{' '}
-                    {analytics.deficitMonths > 0 &&
-                      `Expenses exceeded income for ${analytics.deficitMonths} consecutive month(s). `}
-                    {analytics.savingsRates < 20 &&
-                      `Savings rate is ${analytics.savingsRates?.toFixed(
-                        1
-                      )}%, below the recommended 20%. `}
-                    {analytics.expenseToIncomeRatio > 75 &&
-                      `Expense-to-income ratio is high at ${analytics.expenseToIncomeRatio?.toFixed(
-                        1
-                      )}%. `}
-                    {analytics.spikes > 0 &&
-                      `${analytics.spikes} unusual expense spike(s) detected. `}
-                    {analytics.isIncreasing &&
-                      `Expenses have been rising consistently over the last 3 months. `}
-                    {analytics.incomeDropPercent > 10 &&
-                      `Income has dropped by ${analytics.incomeDropPercent?.toFixed(
-                        1
-                      )}% recently. `}
-                    {score < 5 &&
-                      analytics.deficitMonths === 0 &&
-                      analytics.savingsRates >= 20 &&
-                      `Overall finances look healthy — keep it up.`}
-                  </p>
-                </div>
-              </div>
-
-              <div className='rounded-3xl border border-border/70 bg-gradient-to-br from-slate-950/70 to-slate-900/85 p-5 w-full shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition-all duration-250 hover:shadow-[0_0_0_1px_rgba(99,102,241,0.3),0_20px_50px_rgba(99,102,241,0.12)]'>
-                <div className='flex items-start justify-between gap-3 mb-4'>
-                  <div>
-                    <p className='text-text-primary font-semibold text-sm'>
-                      FinGuard score explanation
-                    </p>
-                    <p className='text-text-secondary text-xs mt-1'>
-                      Key factors that influence your current risk score.
-                    </p>
-                  </div>
-                  <span
-                    className={`text-xs font-semibold px-3 py-1 rounded-full border ${riskBg} ${riskColor}`}
-                  >
-                    {riskLabel}
-                  </span>
-                </div>
-
-                <div className='space-y-3'>
-                  {scoreExplanationItems.map((item, index) => (
-                    <div
-                      key={index}
-                      className='flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-bg-secondary px-3 py-3'
-                    >
-                      <div>
-                        <p className='text-sm font-medium text-text-primary'>
-                          {item.label}
+                          {flag.label}
                         </p>
-                        <p className='text-text-secondary text-xs mt-1'>
-                          {item.description}
+                        <p className='text-text-secondary text-xs mt-0.5'>
+                          {flag.desc}
                         </p>
                       </div>
-                      <p className='text-text-primary text-sm font-semibold'>
-                        {item.value}
-                      </p>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className='rounded-2xl border border-border/70 bg-bg-secondary p-4 text-text-secondary text-sm'>
+                  No advisory flags detected. Your score is still based on cash
+                  flow, savings, and expense behavior.
+                </div>
+              )}
 
-                <p className='mt-4 text-xs text-text-secondary leading-relaxed'>
-                  {scoreExplanationNote}
+              <div className='mt-4 p-3 bg-bg-secondary rounded-lg border border-border'>
+                <p className='text-text-secondary text-xs leading-relaxed'>
+                  <span className='text-text-primary font-medium'>
+                    Summary —{' '}
+                  </span>
+                  You are currently in a{' '}
+                  <span className={riskColor}>{riskLabel.toLowerCase()}</span>{' '}
+                  zone.{' '}
+                  {analytics.deficitMonths > 0 &&
+                    `Expenses exceeded income for ${analytics.deficitMonths} consecutive month(s). `}
+                  {analytics.savingsRates < 20 &&
+                    `Savings rate is ${analytics.savingsRates?.toFixed(
+                      1
+                    )}%, below the recommended 20%. `}
+                  {analytics.expenseToIncomeRatio > 75 &&
+                    `Expense-to-income ratio is high at ${analytics.expenseToIncomeRatio?.toFixed(
+                      1
+                    )}%. `}
+                  {analytics.spikes > 0 &&
+                    `${analytics.spikes} unusual expense spike(s) detected. `}
+                  {analytics.isIncreasing &&
+                    `Expenses have been rising consistently over the last 3 months. `}
+                  {analytics.incomeDropPercent > 10 &&
+                    `Income has dropped by ${analytics.incomeDropPercent?.toFixed(
+                      1
+                    )}% recently. `}
+                  {score < 5 &&
+                    analytics.deficitMonths === 0 &&
+                    analytics.savingsRates >= 20 &&
+                    `Overall finances look healthy — keep it up.`}
                 </p>
               </div>
+            </div>
+
+            <div className='rounded-3xl border border-border/70 bg-gradient-to-br from-slate-950/70 to-slate-900/85 p-5 w-full shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition-all duration-250 hover:shadow-[0_0_0_1px_rgba(99,102,241,0.3),0_20px_50px_rgba(99,102,241,0.12)]'>
+              <div className='flex items-start justify-between gap-3 mb-4'>
+                <div>
+                  <p className='text-text-primary font-semibold text-sm'>
+                    FinGuard score explanation
+                  </p>
+                  <p className='text-text-secondary text-xs mt-1'>
+                    Key factors that influence your current risk score.
+                  </p>
+                </div>
+                <span
+                  className={`text-xs font-semibold px-3 py-1 rounded-full border ${riskBg} ${riskColor}`}
+                >
+                  {riskLabel}
+                </span>
+              </div>
+
+              <div className='space-y-3'>
+                {scoreExplanationItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className='flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-bg-secondary px-3 py-3'
+                  >
+                    <div>
+                      <p className='text-sm font-medium text-text-primary'>
+                        {item.label}
+                      </p>
+                      <p className='text-text-secondary text-xs mt-1'>
+                        {item.description}
+                      </p>
+                    </div>
+                    <p className='text-text-primary text-sm font-semibold'>
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <p className='mt-4 text-xs text-text-secondary leading-relaxed'>
+                {scoreExplanationNote}
+              </p>
+            </div>
           </div>
 
           {/* ── Transactions section ── */}

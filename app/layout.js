@@ -1,6 +1,7 @@
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { SessionProvider } from 'next-auth/react'
+import NextTopLoader from 'nextjs-toploader'
 
 const dmSans = DM_Sans({
   variable: '--font-dm-sans',
@@ -9,14 +10,18 @@ const dmSans = DM_Sans({
 })
 
 export const metadata = {
-  title: 'FinGuard — Personal Finance Intelligence',
-  description: 'Upload bank statements, get rule-based advisories, Prophet forecasts, and Monte Carlo risk simulations.'
+  title: 'FinGuard | Your Financial Buddy',
+  description: 'AI-powered personal finance intelligence and forecasting.',
+  icons: {
+    icon: '/icon.png',
+  },
 }
 
 export default function RootLayout ({ children }) {
   return (
     <html lang='en'>
       <body className={`${dmSans.variable} antialiased`}>
+        <NextTopLoader color="#6366f1" showSpinner={false} />
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

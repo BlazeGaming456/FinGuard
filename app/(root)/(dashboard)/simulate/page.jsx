@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   LineChart,
   Line,
@@ -50,6 +50,7 @@ export default function SimulatePage () {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [transactionMonths, setTransactionMonths] = useState(null)
 
   const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
 
@@ -84,6 +85,25 @@ export default function SimulatePage () {
       setLoading(false)
     }
   }
+
+  const loadTransactionMonths = async () => {
+    try {
+      const res = await fetch('/api/fetch/transactions')
+      if (!res.ok) return
+      const json = await res.json()
+      const dates = json.transactions?.map(t => new Date(t.date)) ?? []
+      const monthKeys = [
+        ...new Set(dates.map(d => `${d.getUTCFullYear()}-${d.getUTCMonth()}`))
+      ]
+      setTransactionMonths(monthKeys.length)
+    } catch {
+      setTransactionMonths(null)
+    }
+  }
+
+  useEffect(() => {
+    loadTransactionMonths()
+  }, [])
 
   // Build fan chart data from sample paths
   const fanChartData = data
@@ -162,6 +182,9 @@ export default function SimulatePage () {
 
   const financialGrade = computeGrade()
 
+  const showLowDataNotice =
+    transactionMonths !== null && transactionMonths > 0 && transactionMonths < 6
+
   return (
     <div className='space-y-6'>
       <PageHeader
@@ -169,6 +192,18 @@ export default function SimulatePage () {
         subtitle='Phase 5: Monte Carlo simulations for financial survival, affordability, and what-if scenarios'
         badge='Phase 5'
       />
+
+      {showLowDataNotice && (
+        <div className='bg-warning/5 border border-warning/20 rounded-xl p-4'>
+          <p className='text-warning text-sm font-semibold mb-1'>
+            Limited transaction history
+          </p>
+          <p className='text-text-secondary text-xs'>
+            Your account has less than 6 months of data, so simulation accuracy
+            may be reduced.
+          </p>
+        </div>
+      )}
 
       {/* ── Input panel + results side by side on large screens ── */}
       <div className='stagger-item grid grid-cols-1 lg:grid-cols-3 gap-6'>
@@ -239,7 +274,9 @@ export default function SimulatePage () {
                 </p>
                 {activeTool === 'scenario' ? (
                   <div className='space-y-4'>
-                    <p className='text-text-secondary text-xs'>Only scenario inputs affect the Scenario Planner results.</p>
+                    <p className='text-text-secondary text-xs'>
+                      Only scenario inputs affect the Scenario Planner results.
+                    </p>
                     <div className='mb-3'>
                       <label className='text-text-secondary text-xs block mb-1.5'>
                         Job Loss Duration: {form.job_loss_months} months
@@ -250,7 +287,9 @@ export default function SimulatePage () {
                         max={12}
                         step={1}
                         value={form.job_loss_months}
-                        onChange={e => update('job_loss_months', e.target.value)}
+                        onChange={e =>
+                          update('job_loss_months', e.target.value)
+                        }
                         className='w-full accent-indigo-500'
                       />
                       <div className='flex justify-between text-text-secondary text-xs mt-1'>
@@ -282,7 +321,9 @@ export default function SimulatePage () {
 
                     <div>
                       <label className='text-text-secondary text-xs block mb-1.5'>
-                        Reduced Income: {Math.round(form.reduced_income_multiplier * 100)}% of normal
+                        Reduced Income:{' '}
+                        {Math.round(form.reduced_income_multiplier * 100)}% of
+                        normal
                       </label>
                       <input
                         type='range'
@@ -303,7 +344,9 @@ export default function SimulatePage () {
                   </div>
                 ) : activeTool === 'afford' ? (
                   <div className='space-y-4'>
-                    <p className='text-text-secondary text-xs'>Only purchase targets and timing affect affordability.</p>
+                    <p className='text-text-secondary text-xs'>
+                      Only purchase targets and timing affect affordability.
+                    </p>
                     <div className='mb-3'>
                       <label className='text-text-secondary text-xs block mb-1.5'>
                         Target Amount (₹)
@@ -311,7 +354,9 @@ export default function SimulatePage () {
                       <input
                         type='number'
                         value={form.target_purchase}
-                        onChange={e => update('target_purchase', e.target.value)}
+                        onChange={e =>
+                          update('target_purchase', e.target.value)
+                        }
                         placeholder='e.g. 80000'
                         className='w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent'
                       />
@@ -333,22 +378,39 @@ export default function SimulatePage () {
                   </div>
                 ) : activeTool === 'survival' ? (
                   <div className='space-y-3'>
-                    <p className='text-text-secondary text-xs'>Financial Survival only uses current savings, horizon, and simulation count.</p>
-                    <p className='text-text-secondary text-xs'>Scenario and purchase inputs are ignored in this tab.</p>
+                    <p className='text-text-secondary text-xs'>
+                      Financial Survival only uses current savings, horizon, and
+                      simulation count.
+                    </p>
+                    <p className='text-text-secondary text-xs'>
+                      Scenario and purchase inputs are ignored in this tab.
+                    </p>
                   </div>
                 ) : activeTool === 'advanced' ? (
                   <div className='space-y-3'>
-                    <p className='text-text-secondary text-xs'>Advanced Metrics reflects your current inputs — if scenario controls are active, metrics will show scenario results.</p>
+                    <p className='text-text-secondary text-xs'>
+                      Advanced Metrics reflects your current inputs — if
+                      scenario controls are active, metrics will show scenario
+                      results.
+                    </p>
                     <p className='text-text-secondary text-xs font-medium'>
-                      {form.job_loss_months > 0 || form.high_spending_multiplier > 1.3 || form.reduced_income_multiplier < 1 
-                        ? '⚠ Scenario mode active' 
+                      {form.job_loss_months > 0 ||
+                      form.high_spending_multiplier > 1.3 ||
+                      form.reduced_income_multiplier < 1
+                        ? '⚠ Scenario mode active'
                         : '✓ Baseline mode'}
                     </p>
                   </div>
                 ) : (
                   <div className='space-y-3'>
-                    <p className='text-text-secondary text-xs'>Advanced Metrics uses the same core settings as Financial Survival.</p>
-                    <p className='text-text-secondary text-xs'>Use Scenario Planner or Can I Afford This? for scenario and purchase controls.</p>
+                    <p className='text-text-secondary text-xs'>
+                      Advanced Metrics uses the same core settings as Financial
+                      Survival.
+                    </p>
+                    <p className='text-text-secondary text-xs'>
+                      Use Scenario Planner or Can I Afford This? for scenario
+                      and purchase controls.
+                    </p>
                   </div>
                 )}
               </div>
@@ -445,17 +507,22 @@ export default function SimulatePage () {
                 <>
                   <div className='grid grid-cols-2 gap-3'>
                     <div className='bg-bg-card border border-border rounded-xl p-4'>
-                      <p className='text-text-secondary text-xs'>Chance of running out</p>
+                      <p className='text-text-secondary text-xs'>
+                        Chance of running out
+                      </p>
                       <p className='text-xl font-semibold text-danger'>
                         {(m.risk_of_deficit * 100).toFixed(1)}%
                       </p>
                       <p className='text-text-secondary text-xs mt-1'>
-                        {neverDepletePct?.toFixed(1)}% of simulations never exhaust savings
+                        {neverDepletePct?.toFixed(1)}% of simulations never
+                        exhaust savings
                       </p>
                     </div>
 
                     <div className='bg-bg-card border border-border rounded-xl p-4'>
-                      <p className='text-text-secondary text-xs'>Typical depletion month (conditional)</p>
+                      <p className='text-text-secondary text-xs'>
+                        Typical depletion month (conditional)
+                      </p>
                       <p className='text-xl font-semibold'>
                         {conditionalDepletionMonth
                           ? `Month ${conditionalDepletionMonth}`
@@ -463,32 +530,49 @@ export default function SimulatePage () {
                       </p>
                       <p className='text-text-secondary text-xs mt-1'>
                         {conditionalDepletionMonth
-                          ? `Median month only among the ${(m.risk_of_deficit * 100).toFixed(1)}% of simulations that run out — not your most likely outcome`
+                          ? `Median month only among the ${(
+                              m.risk_of_deficit * 100
+                            ).toFixed(
+                              1
+                            )}% of simulations that run out — not your most likely outcome`
                           : 'No simulations exhausted savings in this run'}
                       </p>
                     </div>
 
                     <div className='bg-bg-card border border-border rounded-xl p-4'>
-                      <p className='text-text-secondary text-xs'>Emergency fund status</p>
+                      <p className='text-text-secondary text-xs'>
+                        Emergency fund status
+                      </p>
                       <p className='text-xl font-semibold'>
                         {emergencyFundPercent ?? '-'}%
                       </p>
-                      <p className='text-text-secondary text-xs mt-1'>Percent of 6-month target covered</p>
+                      <p className='text-text-secondary text-xs mt-1'>
+                        Percent of 6-month target covered
+                      </p>
                     </div>
 
                     <div className='bg-bg-card border border-border rounded-xl p-4'>
-                      <p className='text-text-secondary text-xs'>Recovery probability</p>
+                      <p className='text-text-secondary text-xs'>
+                        Recovery probability
+                      </p>
                       <p className='text-xl font-semibold text-success'>
                         {(m.recovery_probability * 100).toFixed(0)}%
                       </p>
-                      <p className='text-text-secondary text-xs mt-1'>Of negative scenarios that recover within horizon</p>
+                      <p className='text-text-secondary text-xs mt-1'>
+                        Of negative scenarios that recover within horizon
+                      </p>
                     </div>
                   </div>
 
                   <div className='bg-bg-card border border-border rounded-xl p-5 mt-3'>
-                    <p className='text-text-primary font-medium text-sm'>Financial Health Grade</p>
+                    <p className='text-text-primary font-medium text-sm'>
+                      Financial Health Grade
+                    </p>
                     <p className='text-2xl font-bold mt-2'>{financialGrade}</p>
-                    <p className='text-text-secondary text-xs mt-1'>A quick grade based on emergency fund coverage and deficit risk</p>
+                    <p className='text-text-secondary text-xs mt-1'>
+                      A quick grade based on emergency fund coverage and deficit
+                      risk
+                    </p>
                   </div>
                 </>
               )}
@@ -500,29 +584,67 @@ export default function SimulatePage () {
                     <div className='space-y-4'>
                       <div className='bg-bg-card border border-border rounded-xl p-5'>
                         <p className='text-text-primary font-medium text-sm mb-1'>
-                          Affordability Timeline — ₹{Number(form.target_purchase).toLocaleString()}
+                          Affordability Timeline — ₹
+                          {Number(form.target_purchase).toLocaleString()}
                         </p>
                         <p className='text-text-secondary text-xs mb-4'>
-                          Probability that savings stay at or above ₹{Number(form.target_purchase).toLocaleString()} (not after deducting the purchase)
+                          Probability that savings stay at or above ₹
+                          {Number(form.target_purchase).toLocaleString()} (not
+                          after deducting the purchase)
                         </p>
                         <ResponsiveContainer width='100%' height={160}>
                           <BarChart data={affordData}>
-                            <CartesianGrid strokeDasharray='3 3' stroke='#2a2d3e' />
-                            <XAxis dataKey='month' tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 100]} />
-                            <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v}%`, 'Probability']} />
-                            <Bar dataKey='probability' fill='#6366f1' radius={[4, 4, 0, 0]} />
+                            <CartesianGrid
+                              strokeDasharray='3 3'
+                              stroke='#2a2d3e'
+                            />
+                            <XAxis
+                              dataKey='month'
+                              tick={{
+                                fill: '#b0b8c5',
+                                fontSize: 13,
+                                fontWeight: 500
+                              }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{
+                                fill: '#b0b8c5',
+                                fontSize: 13,
+                                fontWeight: 500
+                              }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={v => `${v}%`}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip
+                              contentStyle={tooltipStyle}
+                              formatter={v => [`${v}%`, 'Probability']}
+                            />
+                            <Bar
+                              dataKey='probability'
+                              fill='#6366f1'
+                              radius={[4, 4, 0, 0]}
+                            />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
 
                       <div className='bg-bg-card border border-border rounded-xl p-5'>
-                        <p className='text-text-primary font-medium text-sm'>Quick answers</p>
+                        <p className='text-text-primary font-medium text-sm'>
+                          Quick answers
+                        </p>
                         <div className='mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3'>
                           <div className='p-3 bg-bg-secondary rounded-md'>
-                            <p className='text-text-secondary text-xs'>Can afford today</p>
+                            <p className='text-text-secondary text-xs'>
+                              Can afford today
+                            </p>
                             <p className='text-xl font-semibold'>
-                              {data.can_afford_now || Number(form.current_savings) >= Number(form.target_purchase)
+                              {data.can_afford_now ||
+                              Number(form.current_savings) >=
+                                Number(form.target_purchase)
                                 ? '100%'
                                 : '0%'}
                             </p>
@@ -531,56 +653,91 @@ export default function SimulatePage () {
                             </p>
                           </div>
                           <div className='p-3 bg-bg-secondary rounded-md'>
-                            <p className='text-text-secondary text-xs'>Chance by target month</p>
+                            <p className='text-text-secondary text-xs'>
+                              Chance by target month
+                            </p>
                             <p className='text-xl font-semibold'>
                               {(() => {
-                                const e = affordData.find(r => r.month === `Month ${form.target_months}`)
+                                const e = affordData.find(
+                                  r => r.month === `Month ${form.target_months}`
+                                )
                                 return e ? `${e.probability}%` : 'N/A'
                               })()}
                             </p>
                             <p className='text-text-secondary text-xs mt-1'>
-                              Savings still ≥ target at month {form.target_months}
+                              Savings still ≥ target at month{' '}
+                              {form.target_months}
                             </p>
                           </div>
                           <div className='p-3 bg-bg-secondary rounded-md'>
-                            <p className='text-text-secondary text-xs'>Chance by 12 months</p>
+                            <p className='text-text-secondary text-xs'>
+                              Chance by 12 months
+                            </p>
                             <p className='text-xl font-semibold'>
                               {(() => {
-                                const e = affordData.find(r => r.month === 'Month 12')
+                                const e = affordData.find(
+                                  r => r.month === 'Month 12'
+                                )
                                 return e ? `${e.probability}%` : '—'
                               })()}
                             </p>
                           </div>
                         </div>
 
-                        {Number(form.current_savings) >= Number(form.target_purchase) && (
+                        {Number(form.current_savings) >=
+                          Number(form.target_purchase) && (
                           <div className='mt-3 p-3 bg-success/5 border border-success/20 rounded-lg'>
                             <p className='text-success text-xs'>
-                              You already have ₹{Number(form.current_savings).toLocaleString()} — this purchase is affordable today. Future-month probabilities show whether savings are likely to stay above ₹{Number(form.target_purchase).toLocaleString()}.
+                              You already have ₹
+                              {Number(form.current_savings).toLocaleString()} —
+                              this purchase is affordable today. Future-month
+                              probabilities show whether savings are likely to
+                              stay above ₹
+                              {Number(form.target_purchase).toLocaleString()}.
                             </p>
                           </div>
                         )}
 
                         <div className='mt-3 grid grid-cols-1 sm:grid-cols-1 gap-3'>
                           <div className='p-3 bg-bg-secondary rounded-md'>
-                            <p className='text-text-secondary text-xs'>Recommended monthly savings</p>
+                            <p className='text-text-secondary text-xs'>
+                              Recommended monthly savings
+                            </p>
                             <p className='text-xl font-semibold'>
                               {(() => {
-                                const idx = Math.max(0, Number(form.target_months) - 1)
-                                const medianAtTarget = fanChartData[idx]?.median ?? Math.round(m.percentiles.p50)
-                                const shortfall = Math.max(0, Number(form.target_purchase) - medianAtTarget)
-                                const rec = shortfall > 0 ? Math.ceil(shortfall / Number(form.target_months)) : 0
+                                const idx = Math.max(
+                                  0,
+                                  Number(form.target_months) - 1
+                                )
+                                const medianAtTarget =
+                                  fanChartData[idx]?.median ??
+                                  Math.round(m.percentiles.p50)
+                                const shortfall = Math.max(
+                                  0,
+                                  Number(form.target_purchase) - medianAtTarget
+                                )
+                                const rec =
+                                  shortfall > 0
+                                    ? Math.ceil(
+                                        shortfall / Number(form.target_months)
+                                      )
+                                    : 0
                                 return `₹${rec.toLocaleString()}`
                               })()}
                             </p>
-                            <p className='text-text-secondary text-xs mt-1'>Only needed if you cannot afford the target today</p>
+                            <p className='text-text-secondary text-xs mt-1'>
+                              Only needed if you cannot afford the target today
+                            </p>
                           </div>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className='bg-bg-card border border-border rounded-xl p-6'>
-                      <p className='text-text-secondary text-sm'>Enter a target purchase amount to see affordability projections.</p>
+                      <p className='text-text-secondary text-sm'>
+                        Enter a target purchase amount to see affordability
+                        projections.
+                      </p>
                     </div>
                   )}
                 </>
@@ -590,28 +747,74 @@ export default function SimulatePage () {
               {activeTool === 'scenario' && (
                 <>
                   <div className='bg-bg-card border border-border rounded-xl p-5'>
-                    <p className='text-text-primary font-medium text-sm mb-1'>Scenario Comparison</p>
-                    <p className='text-text-secondary text-xs mb-5'>Median savings outcome by scenario</p>
+                    <p className='text-text-primary font-medium text-sm mb-1'>
+                      Scenario Comparison
+                    </p>
+                    <p className='text-text-secondary text-xs mb-5'>
+                      Median savings outcome by scenario
+                    </p>
                     <ResponsiveContainer width='100%' height={180}>
                       <BarChart data={scenarioData} layout='vertical'>
-                        <CartesianGrid strokeDasharray='3 3' stroke='#2a2d3e' horizontal={false} />
-                        <XAxis type='number' tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
-                        <YAxis type='category' dataKey='scenario' tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} width={90} />
-                        <Tooltip contentStyle={tooltipStyle} formatter={v => [`₹${v?.toLocaleString()}`]} />
-                        <Bar dataKey='value' radius={[0, 4, 4, 0]} fill='#6366f1' />
+                        <CartesianGrid
+                          strokeDasharray='3 3'
+                          stroke='#2a2d3e'
+                          horizontal={false}
+                        />
+                        <XAxis
+                          type='number'
+                          tick={{
+                            fill: '#b0b8c5',
+                            fontSize: 13,
+                            fontWeight: 500
+                          }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
+                        />
+                        <YAxis
+                          type='category'
+                          dataKey='scenario'
+                          tick={{
+                            fill: '#b0b8c5',
+                            fontSize: 13,
+                            fontWeight: 500
+                          }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={90}
+                        />
+                        <Tooltip
+                          contentStyle={tooltipStyle}
+                          formatter={v => [`₹${v?.toLocaleString()}`]}
+                        />
+                        <Bar
+                          dataKey='value'
+                          radius={[0, 4, 4, 0]}
+                          fill='#6366f1'
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
                   <div className='bg-bg-card border border-border rounded-xl p-5 mt-3'>
-                    <p className='text-text-primary font-medium text-sm mb-3'>What-if quick checks</p>
+                    <p className='text-text-primary font-medium text-sm mb-3'>
+                      What-if quick checks
+                    </p>
                     <div className='space-y-2'>
                       {data.interpretations.map((item, i) => {
-                        const cfg = severityConfig[item.severity] || severityConfig.low
+                        const cfg =
+                          severityConfig[item.severity] || severityConfig.low
                         return (
-                          <div key={i} className={`flex gap-3 p-3 rounded-lg border ${cfg.bg}`}>
-                            <span className={`${cfg.text} shrink-0`}>{cfg.icon}</span>
-                            <p className={`text-sm ${cfg.text}`}>{item.message}</p>
+                          <div
+                            key={i}
+                            className={`flex gap-3 p-3 rounded-lg border ${cfg.bg}`}
+                          >
+                            <span className={`${cfg.text} shrink-0`}>
+                              {cfg.icon}
+                            </span>
+                            <p className={`text-sm ${cfg.text}`}>
+                              {item.message}
+                            </p>
                           </div>
                         )
                       })}
@@ -628,7 +831,9 @@ export default function SimulatePage () {
                     {[
                       {
                         label: 'Median Savings',
-                        value: `₹${Math.round(m.percentiles.p50).toLocaleString()}`,
+                        value: `₹${Math.round(
+                          m.percentiles.p50
+                        ).toLocaleString()}`,
                         sub: `after ${data.horizon_months} months`,
                         color: 'text-accent',
                         dot: 'bg-accent'
@@ -666,7 +871,9 @@ export default function SimulatePage () {
                       },
                       {
                         label: 'Max Drawdown',
-                        value: `₹${Math.round(m.worst_drawdown).toLocaleString()}`,
+                        value: `₹${Math.round(
+                          m.worst_drawdown
+                        ).toLocaleString()}`,
                         sub: 'largest peak-to-trough drop across all simulations',
                         color: 'text-warning',
                         dot: 'bg-warning'
@@ -679,33 +886,104 @@ export default function SimulatePage () {
                         dot: 'bg-success'
                       }
                     ].map((card, i) => (
-                      <div key={i} className='bg-bg-card border border-border rounded-xl p-4'>
+                      <div
+                        key={i}
+                        className='bg-bg-card border border-border rounded-xl p-4'
+                      >
                         <div className='flex items-center gap-2 mb-2'>
                           <div className={`w-2 h-2 rounded-full ${card.dot}`} />
-                          <p className='text-text-secondary text-xs'>{card.label}</p>
+                          <p className='text-text-secondary text-xs'>
+                            {card.label}
+                          </p>
                         </div>
-                        <p className={`text-xl font-semibold ${card.color}`}>{card.value}</p>
-                        <p className='text-text-secondary text-xs mt-1'>{card.sub}</p>
+                        <p className={`text-xl font-semibold ${card.color}`}>
+                          {card.value}
+                        </p>
+                        <p className='text-text-secondary text-xs mt-1'>
+                          {card.sub}
+                        </p>
                       </div>
                     ))}
                   </div>
 
                   {/* Percentile bands chart */}
                   <div className='bg-bg-card border border-border rounded-xl p-5 mt-3'>
-                    <p className='text-text-primary font-medium text-sm mb-1'>Savings Distribution Over Time</p>
-                    <p className='text-text-secondary text-xs mb-5'>Percentile bands from {data.n_simulations.toLocaleString()} simulations</p>
+                    <p className='text-text-primary font-medium text-sm mb-1'>
+                      Savings Distribution Over Time
+                    </p>
+                    <p className='text-text-secondary text-xs mb-5'>
+                      Percentile bands from{' '}
+                      {data.n_simulations.toLocaleString()} simulations
+                    </p>
                     <ResponsiveContainer width='100%' height={220}>
                       <LineChart data={fanChartData}>
                         <CartesianGrid strokeDasharray='3 3' stroke='#2a2d3e' />
-                        <XAxis dataKey='month' tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: '#b0b8c5', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip contentStyle={tooltipStyle} formatter={v => [`₹${v?.toLocaleString()}`]} />
-                        <Line dataKey='p95' stroke='#22c55e' strokeWidth={1.5} strokeDasharray='4 2' dot={false} name='p95 (best)' />
-                        <Line dataKey='p75' stroke='#6366f1' strokeWidth={1} strokeDasharray='4 2' dot={false} name='p75' />
-                        <Line dataKey='median' stroke='#ffffff' strokeWidth={2} dot={false} name='Median' />
-                        <Line dataKey='p25' stroke='#f59e0b' strokeWidth={1} strokeDasharray='4 2' dot={false} name='p25' />
-                        <Line dataKey='p5' stroke='#ef4444' strokeWidth={1.5} strokeDasharray='4 2' dot={false} name='p5 (worst)' />
-                        <Legend wrapperStyle={{ color: '#8b92a5', fontSize: '11px' }} />
+                        <XAxis
+                          dataKey='month'
+                          tick={{
+                            fill: '#b0b8c5',
+                            fontSize: 13,
+                            fontWeight: 500
+                          }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{
+                            fill: '#b0b8c5',
+                            fontSize: 13,
+                            fontWeight: 500
+                          }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
+                        />
+                        <Tooltip
+                          contentStyle={tooltipStyle}
+                          formatter={v => [`₹${v?.toLocaleString()}`]}
+                        />
+                        <Line
+                          dataKey='p95'
+                          stroke='#22c55e'
+                          strokeWidth={1.5}
+                          strokeDasharray='4 2'
+                          dot={false}
+                          name='p95 (best)'
+                        />
+                        <Line
+                          dataKey='p75'
+                          stroke='#6366f1'
+                          strokeWidth={1}
+                          strokeDasharray='4 2'
+                          dot={false}
+                          name='p75'
+                        />
+                        <Line
+                          dataKey='median'
+                          stroke='#ffffff'
+                          strokeWidth={2}
+                          dot={false}
+                          name='Median'
+                        />
+                        <Line
+                          dataKey='p25'
+                          stroke='#f59e0b'
+                          strokeWidth={1}
+                          strokeDasharray='4 2'
+                          dot={false}
+                          name='p25'
+                        />
+                        <Line
+                          dataKey='p5'
+                          stroke='#ef4444'
+                          strokeWidth={1.5}
+                          strokeDasharray='4 2'
+                          dot={false}
+                          name='p5 (worst)'
+                        />
+                        <Legend
+                          wrapperStyle={{ color: '#8b92a5', fontSize: '11px' }}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -713,46 +991,100 @@ export default function SimulatePage () {
                   {/* Emergency fund + safe spend */}
                   <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3'>
                     <div className='bg-bg-card border border-border rounded-xl p-5'>
-                      <p className='text-text-secondary text-xs uppercase tracking-widest mb-3'>Emergency Fund</p>
-                      <p className='text-text-primary text-2xl font-semibold'>₹{Math.round(data.emergency_fund.target).toLocaleString()}</p>
-                      <p className='text-text-secondary text-xs mt-1'>6 months of avg expenses</p>
+                      <p className='text-text-secondary text-xs uppercase tracking-widest mb-3'>
+                        Emergency Fund
+                      </p>
+                      <p className='text-text-primary text-2xl font-semibold'>
+                        ₹
+                        {Math.round(
+                          data.emergency_fund.target
+                        ).toLocaleString()}
+                      </p>
+                      <p className='text-text-secondary text-xs mt-1'>
+                        6 months of avg expenses
+                      </p>
                       {data.emergency_fund.gap > 0 && (
                         <>
                           <div className='mt-3 bg-bg-secondary rounded-full h-2'>
-                            <div className='bg-accent h-2 rounded-full' style={{ width: `${Math.min(((data.emergency_fund.target - data.emergency_fund.gap) / data.emergency_fund.target) * 100, 100)}%` }} />
+                            <div
+                              className='bg-accent h-2 rounded-full'
+                              style={{
+                                width: `${Math.min(
+                                  ((data.emergency_fund.target -
+                                    data.emergency_fund.gap) /
+                                    data.emergency_fund.target) *
+                                    100,
+                                  100
+                                )}%`
+                              }}
+                            />
                           </div>
-                          <p className='text-text-secondary text-xs mt-2'>Gap: ₹{Math.round(data.emergency_fund.gap).toLocaleString()}{data.emergency_fund.months_to_reach && ` · ${data.emergency_fund.months_to_reach} months to reach`}</p>
+                          <p className='text-text-secondary text-xs mt-2'>
+                            Gap: ₹
+                            {Math.round(
+                              data.emergency_fund.gap
+                            ).toLocaleString()}
+                            {data.emergency_fund.months_to_reach &&
+                              ` · ${data.emergency_fund.months_to_reach} months to reach`}
+                          </p>
                         </>
                       )}
-                      {data.emergency_fund.gap === 0 && <p className='text-success text-xs mt-2'>✓ Emergency fund already covered</p>}
+                      {data.emergency_fund.gap === 0 && (
+                        <p className='text-success text-xs mt-2'>
+                          ✓ Emergency fund already covered
+                        </p>
+                      )}
                     </div>
 
                     <div className='bg-bg-card border border-border rounded-xl p-5'>
                       <p className='text-text-secondary text-xs uppercase tracking-widest mb-3'>
-                        Additional Monthly Spending Before Deficit Risk Exceeds 20%
+                        Additional Monthly Spending Before Deficit Risk Exceeds
+                        20%
                       </p>
-                      <p className='text-success text-2xl font-semibold'>₹{Math.round(data.safe_extra_spend).toLocaleString()}</p>
-                      <p className='text-text-secondary text-xs mt-1'>Maximum extra monthly spend while keeping deficit risk below 20%</p>
-                      <div className='mt-3 p-2 bg-success/5 border border-success/20 rounded-lg'><p className='text-success text-xs'>Based on binary search over {data.n_simulations.toLocaleString()} simulations</p></div>
+                      <p className='text-success text-2xl font-semibold'>
+                        ₹{Math.round(data.safe_extra_spend).toLocaleString()}
+                      </p>
+                      <p className='text-text-secondary text-xs mt-1'>
+                        Maximum extra monthly spend while keeping deficit risk
+                        below 20%
+                      </p>
+                      <div className='mt-3 p-2 bg-success/5 border border-success/20 rounded-lg'>
+                        <p className='text-success text-xs'>
+                          Based on binary search over{' '}
+                          {data.n_simulations.toLocaleString()} simulations
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Interpretations & Under the hood */}
                   <div className='bg-bg-card border border-border rounded-xl p-5 mt-3'>
-                    <p className='text-text-primary font-medium text-sm mb-4'>Simulation Insights</p>
+                    <p className='text-text-primary font-medium text-sm mb-4'>
+                      Simulation Insights
+                    </p>
                     <div className='space-y-3'>
                       {data.interpretations.map((item, i) => {
-                        const cfg = severityConfig[item.severity] || severityConfig.low
+                        const cfg =
+                          severityConfig[item.severity] || severityConfig.low
                         return (
-                          <div key={i} className={`flex gap-3 p-3 rounded-lg border ${cfg.bg}`}>
-                            <span className={`${cfg.text} shrink-0`}>{cfg.icon}</span>
-                            <p className={`text-sm ${cfg.text}`}>{item.message}</p>
+                          <div
+                            key={i}
+                            className={`flex gap-3 p-3 rounded-lg border ${cfg.bg}`}
+                          >
+                            <span className={`${cfg.text} shrink-0`}>
+                              {cfg.icon}
+                            </span>
+                            <p className={`text-sm ${cfg.text}`}>
+                              {item.message}
+                            </p>
                           </div>
                         )
                       })}
                     </div>
                     <div className='mt-6'>
-                      <p className='text-xs font-medium text-text-secondary uppercase tracking-widest mb-4'>Under the hood</p>
+                      <p className='text-xs font-medium text-text-secondary uppercase tracking-widest mb-4'>
+                        Under the hood
+                      </p>
                       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                         {[
                           {
@@ -777,10 +1109,16 @@ export default function SimulatePage () {
                           }
                         ].map(item => (
                           <div key={item.step} className='flex gap-3'>
-                            <span className='text-accent font-mono text-sm mt-0.5 shrink-0'>{item.step}</span>
+                            <span className='text-accent font-mono text-sm mt-0.5 shrink-0'>
+                              {item.step}
+                            </span>
                             <div>
-                              <p className='text-text-primary text-sm font-medium'>{item.title}</p>
-                              <p className='text-text-secondary text-xs mt-1 leading-relaxed'>{item.desc}</p>
+                              <p className='text-text-primary text-sm font-medium'>
+                                {item.title}
+                              </p>
+                              <p className='text-text-secondary text-xs mt-1 leading-relaxed'>
+                                {item.desc}
+                              </p>
                             </div>
                           </div>
                         ))}
