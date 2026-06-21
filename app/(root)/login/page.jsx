@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import AuthLayout from "@/components/AuthLayout"
 
-export default function LoginPage () {
+function LoginForm () {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justRegistered = searchParams.get("registered")
@@ -37,7 +37,7 @@ export default function LoginPage () {
   }
 
   return (
-    <AuthLayout>
+    <>
       <h1 className="text-xl font-bold tracking-tight text-text-primary mb-1.5">Welcome back</h1>
       <p className="text-text-secondary text-sm mb-7">Sign in to your FinGuard account</p>
 
@@ -111,6 +111,16 @@ export default function LoginPage () {
         Don&apos;t have an account?{" "}
         <Link href="/signup" className="text-accent no-underline hover:text-accent-light">Sign up</Link>
       </p>
+    </>
+  )
+}
+
+export default function LoginPage () {
+  return (
+    <AuthLayout>
+      <Suspense fallback={<p className="text-text-secondary text-sm">Loading...</p>}>
+        <LoginForm />
+      </Suspense>
     </AuthLayout>
   )
 }
