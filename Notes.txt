@@ -1,3 +1,5 @@
+-- I created this to log the progress of the project --
+
 ----- Version 1 (Dashboard + CSV)
 1. papaparse -> used to process the csv files
 https://www.papaparse.com/
@@ -55,74 +57,24 @@ It generates a range of values with 95% confidence.
 ----- Monte Carlo Simulation
 The forecasted data is used to simulate and get the required results.
 
------ Plans
-1. Add authentication
+----- Version 3
+1. Added authentication
 2. Fetch only the transactions of the particular user
 3. Format the exported PDF properly
-4. Add delete option of the transactions from the transactions table
-5. Allow more options of uploading data
-6. Format the CSV properly
-7. Add a section to each page explaining the function
-8. Add a settings page
-9. Modify the design of all the pages
-10. Properly comment and document all the code
-11. Understand the whole code
-12. Update to include relevant parameters and functions
+4. Added delete option for the transactions from the transactions table
+5. Added more options of uploading data
+6. Formatted the CSV properly
+7. Added a section to each page explaining the function
+8. Added a settings page
+9. Modified the design of all the pages
+10. Commented and documented all the code
+11. Understood the whole code
+12. Added relevant parameters and functions
+13. Loading states
+14. Error boundaries
+15. Make it so that forecast and simulation show "insufficient data" when there isn't enough data
+16. Clean the project directory
+17. Add proper documentation
+18. Host the application
 
-Things to complete tomorrow -
-1. Add authentication
-2. Fetch only the transactions of the particular user
-3. Add delete option for the transactions
-4. Add a settings page
-5. Do anything else as possible
-
-Additional features required -
-Suggested order:
-1. Loading states (quick wins, a few hours)
-2. Error boundaries (also quick)
-3. PDF upload with at least one bank format parsed
-4. Input validation naturally comes with the PDF parser since you're already normalizing data
-5. README last once features are stable
-
-Final features -
-1. Format the transactions from PDF by attaching tags
-2. Make it so that forecast and simulation show "insufficient data" when there isn't enough data
-3. Check, test, and modify Monte Carlo Simulation as required
-4. Horizon dropdown, etc., have unreadable fonts
-5. Clean the project directory
-6. Add proper documentation
-7. Host the application
-8. Go through the whole code
-
--- The upload redirect from dashboard leads to an empty page
--- Make the percentage drop off after 2 decimals in the predictions page
--- Fix the transaction table of the dashboard and the upload pages
--- Make the outlines glow when hovering over the components especially in the dashboard
--- Add under the hood for dashboard and fix for prediction
--- Fix the sidebard order of items
--- If number of months are less in prediction and simulation inform the user that confidence is lower, through a component
--- The description at the top of the page for all the pages should be updated
-Text font in the graph for prediction in the expense and income forecast part specifically is not readable
--- Mention how much the FinGuard score is out of
--- When logged in, show it on the top right of the landing page
--- Log out automatically after 1 hour
--- Remove change my password for oauth.
-
-Things to do now -
-1. Fix everything
-2. Push to GitHub
-3. Clean up the Directories
-4. Documentation
-5. Host
-6. Fix the Hosting of Skill Slate
-7. Create new repository for Harbinger
-
-Additional problem -
-1. Fix the logo
--- 2. Top right account logo when a user is logged in
--- 3. Auto log out after an hour of inactivity
--- 4. Password reset doesn't work
--- 5. No notice to users about low accurracy in forecast and simulation when the data is less
--- 6. Reverse the decription at the top of the page that you changed, same to earlier. What I wanted to change was the very top circular component you made, which says DATA, OVERVIEW, ACCOUNT, PHASE 4, PHASE 5. Change them  all according to the phases I mentioned. Type Phase and not PHASE
-7. Text font in the forecast part of the prediction graph is not visible when the component that we hover over appears. I mean the hover component containing forecast, lower bound and upper bound
--- 8. Change password still appears for OAuth accounts
+-- Completed --

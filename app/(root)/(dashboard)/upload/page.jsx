@@ -42,6 +42,17 @@ const page = () => {
     await processFile(file)
   }
 
+  const handleDefaultUpload = async (fileName, type) => {
+    try {
+      const response = await fetch(`/${fileName}`)
+      const blob = await response.blob()
+      const file = new File([blob], fileName, { type })
+      await processFile(file)
+    } catch (error) {
+      setErrors(['Failed to load default data.'])
+    }
+  }
+
   const processFile = async file => {
     if (!file) return
 
@@ -181,12 +192,44 @@ const page = () => {
                 )
               )}
             </div>
-            <p className='text-text-secondary text-xs mt-1'>
-              Supported formats: CSV and PDF bank statements
-            </p>
+            <div className='text-center mt-3 space-y-1'>
+              <p className='text-text-secondary text-sm'>
+                Supported formats: CSV and PDF bank statements
+              </p>
+              <p className='text-text-secondary text-xs opacity-75'>
+                (PDF upload is optimized for SBI statements but works for others as well)
+              </p>
+            </div>
           </div>
         )}
       </div>
+
+      {!isUploading && !uploadDone && (
+        <div className='stagger-item mt-6 glass-card rounded-2xl p-8 text-center border border-accent/30 bg-accent/5'>
+          <h3 className='text-xl font-bold text-text-primary mb-2'>
+            Don't have your statements handy?
+          </h3>
+          <p className='text-text-secondary text-sm mb-6'>
+            Try FinGuard with our sample data to see the features in action.
+          </p>
+          <div className='flex flex-wrap gap-4 justify-center'>
+            <button
+              type='button'
+              onClick={() => handleDefaultUpload('test.csv', 'text/csv')}
+              className='px-6 py-3 rounded-xl bg-bg-secondary border border-border hover:border-accent hover:text-accent transition font-medium flex items-center gap-2'
+            >
+              <span className='text-xl'>📄</span> Load Sample CSV
+            </button>
+            <button
+              type='button'
+              onClick={() => handleDefaultUpload('6_months_data.pdf', 'application/pdf')}
+              className='px-6 py-3 rounded-xl bg-accent text-white hover:opacity-90 transition font-medium flex items-center gap-2 shadow-lg shadow-accent/20'
+            >
+              <span className='text-xl'>📑</span> Load Sample PDF
+            </button>
+          </div>
+        </div>
+      )}
 
       {errors.length > 0 && (
         <div className='rounded-2xl border border-red-200 bg-red-50 p-4'>
