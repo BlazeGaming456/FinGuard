@@ -1,61 +1,142 @@
-[Project in progress!]
+# FinGuard 💰
 
-ML-driven finance dashboard for smarter spending and saving.
+> ML-driven finance dashboard for smarter spending and saving.
 
-Features -
-Allow users to track their transactions, get advice on their spending and budgeting, as well as see how different decisions would affect one's finances.
+![Next.js](https://img.shields.io/badge/Next.js-black?logo=next.js)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 
-The Curent Plan -
+---
 
-1. CSV Upload (12+ months for strong analysis)
-2. Dashboard -> Clustering
-3. Advisory (Rule-based)
-4. Forecast of the next 3-6 months (Prophet)
-5. What-if simulation (Monte-Carlo)
-6. LSTM model to compare with Prophet (Version 2.0)
+Video Demo Link - (To be uploaded soon!)
 
-Problems to be tackled -
+Landing Page -
+![alt text](image.png)
 
-1. CSV files to be formatted by the user themselves
-   PDF -> data extracted
-   CSV -> direct
-   In most private sector banks, as well as those abroad, CSV files can be obtained.
-   For public sector banks like SBI in India, PDFs are preferred, and therefore have to be converted.
-2. If new CSV files added, either -
-   i. Replace all analytics with new one
-   ii. Seperate as 'January', 'February', and merge
+Upload Page -
+![alt text](image-1.png)
 
-- Income derived from the transaction data itself.
-- Training done on the user's data themselves rather than external data
+Dashboard -
+![alt text](image-2.png)
 
-Pages (Currently) -
+Forecast Page -
+![alt text](image-3.png)
 
-1. Home Page
-2. Upload File Page
-3. Dashboard Page
-4. Advisory Page
-5. Forecast Page
-6. What-if Simulation Page
-7. Profile/Insights Page
+Monte-Carlo Simulation Page -
+![alt text](image-4.png)
 
-Storage -
-Initially make for one CSV per session + single user
-Then, multiple users + CSV -> prisma + postgresql
+---
 
-Required data from CSV/PDF -
+## What is FinGuard?
 
-1. date
-2. description
-3. amount
-4. type
+Most people don't know where their money actually goes. FinGuard lets you upload your bank transaction history and understand your finances.
 
-Commit types -
+Upload 3-12 months of transactions, and FinGuard gives you:
 
-1. feat - a new feature
-2. fix - a bug fix
-3. docs - changes to documentation
-4. style - changes that don't affect the meaning of the code (formatting)
-5. refactor - code that neither fixes a bug nor adds a feature
-6. test - adding missing tests or correcting existing tests
+- Automatic spending categories via ML clustering
+- Rule-based advice on where to cut back
+- A 3–6 month forecast of your finances
+- What-if simulations to see how decisions affect your future
 
-Example - fix(api): resolve null pointer exception in user profile
+---
+
+## Features
+
+- **CSV + PDF Upload** — Direct CSV import or PDF extraction for banks that don't offer CSV (SBI and other public sector banks)
+- **Dashboard** — Visual breakdown of spending via ML clustering
+- **Advisory** — Rule-based spending and budgeting advice derived from your transaction patterns
+- **Forecast** — 3–6 month financial projection using Facebook Prophet
+- **What-If Simulation** — Monte Carlo simulation to model financial decisions before making them
+
+---
+
+## How It Works
+
+```
+Upload CSV / PDF
+      ↓
+Parse + Clean Transactions (date, description, amount, type)
+      ↓
+ML Clustering → Spending Categories
+      ↓
+Rule Engine → Personalised Advice
+      ↓
+Prophet Model → 3-6 Month Forecast
+      ↓
+Monte Carlo → What-If Simulation
+```
+
+> Income is derived directly from transaction data — no manual input required.
+> All models are trained on your own data, not external datasets.
+
+---
+
+## File Format
+
+FinGuard expects the following fields from your transaction file:
+
+| Field         | Description                   |
+| ------------- | ----------------------------- |
+| `date`        | Transaction date              |
+| `description` | Merchant or transaction label |
+| `amount`      | Transaction value             |
+| `type`        | Credit or Debit               |
+
+**CSV** — Upload directly if your bank provides it (most private sector and international banks).
+
+**PDF** — Supported for banks like SBI that only export PDFs. Text is extracted and parsed automatically.
+
+---
+
+## Pages
+
+| Page               | Description                              |
+| ------------------ | ---------------------------------------- |
+| Home               | Landing and onboarding                   |
+| Upload             | CSV or PDF upload and parsing            |
+| Dashboard          | Spending clusters and category breakdown |
+| Advisory           | Personalised rule-based recommendations  |
+| Forecast           | 3–6 month projection with Prophet        |
+| What-If Simulation | Monte Carlo scenario modelling           |
+| Profile / Insights | Patterns and long-term trends            |
+
+---
+
+## Tech Stack
+
+| Layer               | Tool                             |
+| ------------------- | -------------------------------- |
+| Frontend            | Next.js, Tailwind CSS            |
+| AI / ML             | Gemini API, Prophet, Monte Carlo |
+| PDF Parsing         | pdf-parse                        |
+| Document Generation | LaTeX                            |
+| Database            | PostgreSQL + Prisma (multi-user) |
+
+---
+
+## Local Setup
+
+```bash
+git clone https://github.com/BlazeGaming456/SkillSlate
+cd finguard
+npm install
+cp .env.example .env
+npm run dev
+cd ml
+uvicorn forecast_api:app --reload
+```
+
+---
+
+## Commit Convention
+
+```
+feat     → new feature
+fix      → bug fix
+docs     → documentation changes
+style    → formatting, no logic change
+refactor → code restructure, no feature or fix
+test     → adding or fixing tests
+```
+
+Example: `fix(api): resolve null pointer exception in user profile`
