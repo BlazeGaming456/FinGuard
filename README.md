@@ -5,9 +5,18 @@
 ![Next.js](https://img.shields.io/badge/Next.js-black?logo=next.js)
 ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
-![Status](https://img.shields.io/badge/status-in%20progress-yellow)
+![Prophet](https://img.shields.io/badge/Prophet-FF6B6B?logo=python&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini_API-8E75B2?logo=google&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)
 
 FinGuard turns raw bank transaction history into a full financial intelligence dashboard — spending clusters, personalised advice, 6-month forecasts, and what-if simulations. Upload a CSV or PDF, and it does the rest.
+
+---
+
+## Video Demo
+
+> Will be added soon!
 
 ---
 
