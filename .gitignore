@@ -47,3 +47,7 @@ ML_IMPLEMENTATION_PLAN.md
 ml/__pycache__/
 ml/*.pyc
 ml/.env
+
+# python
+.venv/
+.venv
