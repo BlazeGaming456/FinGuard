@@ -22,7 +22,7 @@ FinGuard turns raw bank transaction history into a full financial intelligence d
 
 ## Video Demo
 
-> Will be added soon!
+> You can see a live video demo at https://www.youtube.com/watch?v=MzY1_45ntJE
 
 ---
 
