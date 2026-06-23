@@ -505,7 +505,7 @@ export default function SimulatePage () {
               {/* Financial Survival */}
               {activeTool === 'survival' && (
                 <>
-                  <div className='grid grid-cols-2 gap-3'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                     <div className='bg-bg-card border border-border rounded-xl p-4'>
                       <p className='text-text-secondary text-xs'>
                         Chance of running out
@@ -827,7 +827,7 @@ export default function SimulatePage () {
               {activeTool === 'advanced' && (
                 <>
                   {/* Risk metric cards */}
-                  <div className='grid grid-cols-2 gap-3'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                     {[
                       {
                         label: 'Median Savings',

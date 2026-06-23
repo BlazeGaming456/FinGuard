@@ -770,7 +770,7 @@ const page = () => {
       ) : (
         <>
           {/* ── Summary cards ── */}
-          <div className='stagger-item grid grid-cols-2 lg:grid-cols-4 gap-4'>
+          <div className='stagger-item grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
             {[
               {
                 label: 'Total Income',
@@ -1403,7 +1403,7 @@ const page = () => {
               <p className='text-xs font-medium text-text-secondary uppercase tracking-widest mb-4'>
                 Data Quality
               </p>
-              <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+              <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4'>
                 {[
                   {
                     label: 'Total Transactions',
