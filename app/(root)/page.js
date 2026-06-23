@@ -92,7 +92,7 @@ export default function HomePage() {
             </div>
           ) : (
             <>
-              <Link href="/login" className="btn-ghost text-sm py-2">
+              <Link href="/login" className="hidden sm:inline-block btn-ghost text-sm py-2">
                 Log in
               </Link>
               <Link
